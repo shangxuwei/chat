@@ -6,7 +6,7 @@ import login
 window = tk.Tk()
 
 # 第2步，给窗口的可视化起名字
-window.title('wechat')
+window.title('chat')
 
 # 第3步，设定窗口的大小(长 * 宽)
 window.geometry('400x300')  # 这里的乘是小x
@@ -72,7 +72,7 @@ def usr_login():
 
 # 第9步，定义用户注册功能
 def usr_sign_up():
-    def sign_to_wechat():
+    def sign_to_chat():
         # 以下三行就是获取我们注册时所输入的信息
         np = new_pwd.get()
         npf = new_pwd_confirm.get()
@@ -119,8 +119,8 @@ def usr_sign_up():
     entry_usr_pwd_confirm = tk.Entry(window_sign_up, textvariable=new_pwd_confirm, show='*')
     entry_usr_pwd_confirm.place(x=130, y=90)
 
-    # 下面的 sign_to_wechat
-    btn_comfirm_sign_up = tk.Button(window_sign_up, text='Sign up', command=sign_to_wechat)
+    # 下面的 sign_to_chat
+    btn_comfirm_sign_up = tk.Button(window_sign_up, text='Sign up', command=sign_to_chat)
     btn_comfirm_sign_up.place(x=180, y=120)
 
 
