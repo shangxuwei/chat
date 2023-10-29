@@ -1,9 +1,9 @@
 import tkinter as tk
 import tkinter.messagebox
 
-import chat_page
-import login
-import register
+from page import chat_page
+from method import login, register
+
 
 class LoginGui:
     def __init__(self, init_window_name):
@@ -65,7 +65,7 @@ class LoginGui:
             # 这里就是判断，如果两次密码输入不一致，则提示Error, Password and confirm password must be the same!
             if np != npf:
                 tkinter.messagebox.showerror('Error', 'Password and confirm password must be the same!')
-            flag = register.register(nn,np)
+            flag = register.register(nn, np)
             # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
             if flag == 1:
                 tkinter.messagebox.showerror('Error', 'The user has already signed up!')

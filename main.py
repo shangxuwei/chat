@@ -1,4 +1,4 @@
-import login_page
+from page import login_page
 import tkinter as tk
 
 if __name__ == "__main__":
