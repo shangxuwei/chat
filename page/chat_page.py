@@ -1,10 +1,10 @@
 from tkinter import *
 from tkinter import ttk
-class MY_GUI():
+class ChatGui:
     def __init__(self,init_window_name):
         self.init_window_name = init_window_name
 
-    def set_init_window(self):
+
         self.init_window_name.title("chat")  # 窗口名
         self.init_window_name.geometry('1080x600+10+10')
         self.init_data_label = Label(self.init_window_name, text="聊天记录")
@@ -49,12 +49,3 @@ class MY_GUI():
         self.fri_tree2 = self.fri_list.insert('', 1, 'second', text='好友', )
         self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, 'admin', text='admin3', )
         self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, 'testadmin', text='admin4', )
-def gui_start():
-    init_window = Tk()
-    ZMJ_PORTAL = MY_GUI(init_window)
-    ZMJ_PORTAL.set_init_window()
-
-    init_window.mainloop()
-
-
-gui_start()
