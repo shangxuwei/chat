@@ -1,10 +1,5 @@
 import pickle
 def login(name,pwd):
-    # 这两行代码就是获取用户输入的usr_name和usr_pwd
-
-
-    # 这里设置异常捕获，当我们第一次访问用户信息文件时是不存在的，所以这里设置异常捕获。
-    # 中间的两行就是我们的匹配，即程序将输入的信息和文件中的信息匹配。
     try:
         with open('usrs_info.pickle', 'rb') as usr_file:
             usrs_info = pickle.load(usr_file)

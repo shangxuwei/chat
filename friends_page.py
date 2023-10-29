@@ -2,11 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 
 
-class MY_GUI():
+class MY_GUI:
     def __init__(self, init_window_name):
         self.init_window_name = init_window_name
 
-    def set_init_window(self):
         self.init_window_name.title("[" + "name" + "] - 聊天界面 ")
         self.init_window_name.geometry("230x600")
         # 好友按钮
@@ -33,15 +32,3 @@ class MY_GUI():
         self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, 'admin', text='admin3', )
         self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, 'testadmin', text='admin4', )
 
-
-
-
-def gui_start():
-    init_window = tk.Tk()
-    ZMJ_PORTAL = MY_GUI(init_window)
-    ZMJ_PORTAL.set_init_window()
-
-    init_window.mainloop()
-
-
-gui_start()

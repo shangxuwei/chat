@@ -1,6 +1,6 @@
-import tkinter as tk  # 使用Tkinter前需要先导入
+import tkinter as tk
 import tkinter.messagebox
-import pickle
+
 import chat_page
 import login
 import register
@@ -42,8 +42,7 @@ class LoginGui:
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
             init_window = tk.Tk()
-            chat_portal = chat_page.MY_GUI(init_window)
-            chat_portal.set_init_window()
+            chat_page.ChatGui(init_window)
             init_window.mainloop()
             # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
         elif flag == 2:

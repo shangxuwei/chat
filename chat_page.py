@@ -1,10 +1,9 @@
 from tkinter import *
 
-class MY_GUI():
+class ChatGui:
     def __init__(self,init_window_name):
         self.init_window_name = init_window_name
 
-    def set_init_window(self):
         self.init_window_name.title("chat")  # 窗口名
         self.init_window_name.geometry('800x600+10+10')
         self.init_data_label = Label(self.init_window_name, text="聊天记录")
@@ -23,13 +22,3 @@ class MY_GUI():
         self.face_button.grid(row=20, column=4,pady=10)
         self.file_button = Button(self.init_window_name, text="文件", width=10, )
         self.file_button.grid(row=20, column=8)
-
-# def gui_start():
-#     init_window = Tk()
-#     ZMJ_PORTAL = MY_GUI(init_window)
-#     ZMJ_PORTAL.set_init_window()
-#
-#     init_window.mainloop()
-#
-#
-# gui_start()
