@@ -24,12 +24,12 @@ class MY_GUI():
         self.file_button = Button(self.init_window_name, text="文件", width=10, )
         self.file_button.grid(row=20, column=8)
 
-def gui_start():
-    init_window = Tk()
-    ZMJ_PORTAL = MY_GUI(init_window)
-    ZMJ_PORTAL.set_init_window()
-
-    init_window.mainloop()
-
-
-gui_start()
+# def gui_start():
+#     init_window = Tk()
+#     ZMJ_PORTAL = MY_GUI(init_window)
+#     ZMJ_PORTAL.set_init_window()
+#
+#     init_window.mainloop()
+#
+#
+# gui_start()
