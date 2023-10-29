@@ -9,14 +9,14 @@ class ChatGui:
         self.init_window_name.title("chat")  # 窗口名
         self.init_window_name.geometry('1080x600+10+10')
         self.init_data_label = Label(self.init_window_name, text="聊天记录")
-        self.init_data_label.pack(row=0, column=0)
+        self.init_data_label.grid(row=0, column=0)
         self.result_data_label = Label(self.init_window_name, text="输入")
         self.result_data_label.grid(row=20, column=0)
 
         self.init_data_Text = Label(self.init_window_name, width=110, height=23, bg="white")
         self.init_data_Text.grid(row=1, column=0, rowspan=10, columnspan=10)
         s1 = Scrollbar(self.init_window_name)
-        s1.pack(row=21, column=20)
+        s1.place(x=775, y=470)
         self.log_data_Text = Text(self.init_window_name, width=110, height=4, yscrollcommand=s1.set)
         s1.config(command=self.log_data_Text.yview)
         self.log_data_Text.grid(row=21, column=0, columnspan=10)
@@ -41,7 +41,7 @@ class ChatGui:
 
         # 创建树形列表
         s2 = Scrollbar(self.init_window_name, )
-        # s2.pack(side=RIGHT, fill=Y)
+        s2.place(x=1055,y=30,height=550)
         self.fri_list = ttk.Treeview(self.init_window_name, height=27, show="tree", yscrollcommand=s2.set)
         self.fri_list.place(x=850, y=30)
         s2.config(command=self.fri_list.yview)
