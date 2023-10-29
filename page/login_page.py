@@ -47,11 +47,7 @@ class LoginGui:
             # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
         elif flag == 2:
                 tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
-        elif flag == 3:  # 如果发现用户名不存在
-            is_sign_up = tkinter.messagebox.askyesno('Welcome！ ', 'You have not sign up yet. Sign up now?')
-            # 提示需不需要注册新用户
-            if is_sign_up:
-                self.usr_sign_up()
+
 
 
     # 用户注册

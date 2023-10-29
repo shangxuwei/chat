@@ -17,5 +17,3 @@ def login(name,pwd):
             return 1
         else:
             return 2
-    else:  # 如果发现用户名不存在
-        return 3
