@@ -5,7 +5,7 @@ import chat_page
 import login
 import register
 
-class Login_GUI:
+class LoginGui:
     def __init__(self, init_window_name):
         # 初始化页面配置
         self.init_window_name = init_window_name
@@ -42,8 +42,8 @@ class Login_GUI:
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
             init_window = tk.Tk()
-            ZMJ_PORTAL = chat_page.MY_GUI(init_window)
-            ZMJ_PORTAL.set_init_window()
+            chat_portal = chat_page.MY_GUI(init_window)
+            chat_portal.set_init_window()
             init_window.mainloop()
             # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
         elif flag == 2:
