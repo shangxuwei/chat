@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import ttk
 
 
+
 class ChatGui:
     def __init__(self, init_window_name):
         self.init_window_name = init_window_name
@@ -35,12 +36,12 @@ class ChatGui:
         self.file_button.place(x=620,y=435)
 
         # 好友按钮
-        self.fri_btn = Button(self.init_window_name, text="好友")
+        self.fri_btn = Label(self.init_window_name, text="好友列表")
         self.fri_btn.place(x=850, y=2)
 
-        # 群按钮
-        self.cla_btn = Button(self.init_window_name, text="群聊")
-        self.cla_btn.place(x=920, y=2)
+        # # 群按钮
+        # self.cla_btn = Button(self.init_window_name, text="群聊",command=lambda :switch(init_window_name))
+        # self.cla_btn.place(x=920, y=2)
 
         # 添加好友
         self.into_fri_btn = Button(self.init_window_name, text="添加好友")
@@ -59,6 +60,9 @@ class ChatGui:
         self.fri_tree2 = self.fri_list.insert('', 1, 'second', text='好友', )
         self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
         self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
+        self.fri_tree3 = self.fri_list.insert('', 2, 'third', text='群聊', )
+        self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
+        self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
 
         def mouse_clicked(event):
             # TODO:唤起好友聊天页
