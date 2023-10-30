@@ -57,5 +57,10 @@ class ChatGui:
         self.fri_tree1_1 = self.fri_list.insert(self.fri_tree1, 0, '001', text='admin1', )
         self.fri_tree1_2 = self.fri_list.insert(self.fri_tree1, 1, '002', text='admin2', )
         self.fri_tree2 = self.fri_list.insert('', 1, 'second', text='好友', )
-        self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, 'admin', text='admin3', )
-        self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, 'testadmin', text='admin4', )
+        self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
+        self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
+
+        def mouse_clicked(event):
+            # TODO:唤起好友聊天页
+            print(self.fri_list.selection())
+        self.fri_list.bind("<Double-Button-1>", mouse_clicked)
