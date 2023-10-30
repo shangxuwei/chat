@@ -4,5 +4,5 @@ import tkinter as tk
 
 if __name__ == "__main__":
     init_window = tk.Tk()
-    login_portal = chat_page.ChatGui(init_window)
+    login_portal = login_page.LoginGui(init_window)
     init_window.mainloop()

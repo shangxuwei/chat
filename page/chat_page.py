@@ -16,12 +16,12 @@ class ChatGui:
         s3=Scrollbar(self.init_window_name)
         s3.place(x=775,y=20,height=320)
         self.init_data_Text = Text(self.init_window_name, width=110, height=23)
-        s3.config(command=self.init_data_Text.yview)
+
         self.init_data_Text.place(x=0,y=30)
         self.init_data_Text.configure(state='normal') #可以写
-        self.init_data_Text.insert(INSERT, 'Hello, World!')
+        self.init_data_Text.insert(INSERT, 'Hello, World!\n')
         self.init_data_Text.configure(state='disabled') #只读不写
-
+        s3.config(command=self.init_data_Text.yview)
         s1 = Scrollbar(self.init_window_name)
         s1.place(x=775, y=470)
         self.log_data_Text = Text(self.init_window_name, width=110, height=4, yscrollcommand=s1.set)

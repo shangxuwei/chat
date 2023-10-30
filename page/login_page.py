@@ -25,14 +25,18 @@ class LoginGui:
         self.entry_usr_pwd = tk.Entry(self.init_window_name, textvariable=self.var_usr_pwd, font=('Arial', 14), show='*')
         self.entry_usr_pwd.place(x=120, y=95)
 
-        self.btn_login = tk.Button(self.init_window_name, text='Login', command=self.usr_login)
+        self.btn_login = tk.Button(self.init_window_name, text='Login', command=lambda:self.usr_login(self.init_window_name))
         self.btn_login.place(x=100, y=200)
         self.btn_sign_up = tk.Button(self.init_window_name, text='Sign up', command=self.usr_sign_up)
         self.btn_sign_up.place(x=200, y=200)
 
-
+    def switch(self,oldwin):
+        oldwin.destroy()
+        init_window = tk.Tk()
+        chat_page.ChatGui(init_window)
+        init_window.mainloop()
     #用户登录
-    def usr_login(self):
+    def usr_login(self,oldwin):
         # 这两行代码就是获取用户输入的usr_name和usr_pwd
         usr_name = self.var_usr_name.get()
         usr_pwd = self.var_usr_pwd.get()
@@ -41,12 +45,10 @@ class LoginGui:
         # 如果用户名和密码与文件中的匹配成功，则会登录成功，并跳出弹窗how are you? 加上你的用户名。
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
-            init_window = tk.Tk()
-            chat_page.ChatGui(init_window)
-            init_window.mainloop()
+            self.switch(oldwin)
             # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
         elif flag == 2:
-                tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
+            tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
 
 
 
