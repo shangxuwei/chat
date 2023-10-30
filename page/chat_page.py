@@ -39,7 +39,7 @@ class ChatGui:
         self.fri_btn = Label(self.init_window_name, text="好友列表")
         self.fri_btn.place(x=850, y=2)
 
-        # # 群按钮
+        # 群按钮
         # self.cla_btn = Button(self.init_window_name, text="群聊",command=lambda :switch(init_window_name))
         # self.cla_btn.place(x=920, y=2)
 
