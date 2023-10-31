@@ -24,18 +24,21 @@ class Client:
                 'ERROR': self.error,
                 'ACK': self.ack
             }
-            header, date, name, payload = data.decode('utf-8').split("\n\n",1)
+            header, date, name, payload = data.decode('utf-8').split("\n\n",3)
             method[header](date,name,payload)
 
     def ack(self,date,name,payload):
-        self.rcv.append(hash(date+name+payload))
+        self.rcv.append(hash(f'{date}{name}{payload}'))
 
     def ack_check(self, flag):
-        while flag not in self.rcv:
+        if flag not in self.rcv:
             return False
-
+        self.rcv.remove(flag)
         return True
+
     def message(self,date,name,payload):
+        t = time.localtime(float(date))
+        date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         print(f'[{date}]{name}: {payload}')
 
     def login(self):
@@ -47,13 +50,18 @@ class Client:
     def chat(self,message):
         header = 'MESSAGE'
         t = time.localtime()
-        date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        date = time.mktime(t)
         name = self.user
         msg = f"{header}\n\n{date}\n\n{name}\n\n{message}".encode('utf-8')
         retry = 0
-        while not self.ack_check(hash(date+self.user+message)) and retry <= 5:
+        while not self.ack_check(hash(f'{date}{self.user}{date}')) and retry <= 5:
             self.sock.sendto(msg, self.service)
             time.sleep(1)
+            retry += 1
+        if retry <= 5:
+            return 1
+        else:
+            return 0
 
 
     def upload(self):
@@ -62,7 +70,7 @@ class Client:
     def download(self):
         pass
 
-    def error(self,message):
+    def error(self,date,name,payload):
         print('error')
 
 if __name__ == '__main__':
@@ -70,4 +78,3 @@ if __name__ == '__main__':
     listen = Thread(target=client.listen)
     listen.start()
     client.chat('hello')
-    print(1)

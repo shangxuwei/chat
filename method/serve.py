@@ -1,4 +1,5 @@
 import socket
+import time
 
 class Service:
     def __init__(self):
@@ -15,6 +16,7 @@ class Service:
                 self.ip_cache.append(address)
             try:
                 header, date, name, payload = data.decode('utf-8').split("\n\n",3)
+                self.sock.sendto(f'ACK\n\n{date}\n\n{name}\n\n{date}'.encode('utf-8'),address)
                 method = {
                     'LOGIN': self.login,
                     'REGISTER': self.register,
@@ -23,7 +25,9 @@ class Service:
                     'DOWNLOAD':self.download
                 }
                 method[header](date,name,payload)
-            except:
+                print(f'ACK to {address},{header}')
+            except Exception as e:
+                print(e)
                 print(data.decode('utf-8'))
                 print('ERROR')
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
@@ -36,7 +40,9 @@ class Service:
         pass
 
     def message(self, date, name, payload):
-        print(f'{date}  {name}:{payload}')
+        t = time.localtime(float(date))
+        dt = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        print(f'[{dt}]{name}:{payload}')
         for address in self.ip_cache:
             self.sock.sendto(f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8'), address)
 
