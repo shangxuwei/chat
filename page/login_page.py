@@ -33,6 +33,7 @@ class LoginGui:
     def switch(self,oldwin):
         oldwin.destroy()
         init_window = tk.Tk()
+        init_window.resizable(width=False,height=False)
         chat_page.ChatGui(init_window)
         init_window.mainloop()
     #用户登录

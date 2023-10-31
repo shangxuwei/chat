@@ -1,6 +1,6 @@
 from tkinter import *
 from tkinter import ttk
-
+from page import addfriend_page
 
 
 class ChatGui:
@@ -44,7 +44,7 @@ class ChatGui:
         # self.cla_btn.place(x=920, y=2)
 
         # 添加好友
-        self.into_fri_btn = Button(self.init_window_name, text="添加好友")
+        self.into_fri_btn = Button(self.init_window_name, text="添加好友",command=lambda :self.switch(self.init_window_name))
         self.into_fri_btn.place(x=990, y=2)
 
         # 创建树形列表
@@ -68,3 +68,9 @@ class ChatGui:
             # TODO:唤起好友聊天页
             print(self.fri_list.selection())
         self.fri_list.bind("<Double-Button-1>", mouse_clicked)
+
+    def switch(self, oldwin):
+        init_window = Tk()
+        init_window.resizable(width=False, height=False)
+        addfriend_page.AddGui(init_window)
+        init_window.mainloop()
