@@ -8,7 +8,6 @@ class Service:
 
     def listen(self):
         while True:
-            print('1')
             data, address = self.sock.recvfrom(4096)
             if data:
                 pass
@@ -25,6 +24,7 @@ class Service:
                 }
                 method[header](date,name,message)
             except:
+                print(data.decode('utf-8'))
                 print('ERROR')
                 self.sock.sendto('ERROR\n\n'.encode('utf-8'),address)
 
@@ -38,7 +38,7 @@ class Service:
     def message(self, date, name, message):
         print(f'{date}  {name}:{message}')
         for address in self.ip_cache:
-            self.sock.sendto(f'{date}  {name}:{message}'.encode('UTF-8'), address)
+            self.sock.sendto(f'MESSAGE\n\n{date}  {name}:{message}'.encode('UTF-8'), address)
 
         # TODO: SQL操作
         pass
