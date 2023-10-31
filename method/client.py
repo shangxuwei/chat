@@ -5,10 +5,10 @@ from threading import Thread
 class Client:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # 本地端地址
-        self.sock.bind(('0.0.0.0',10087))
         # 服务端地址
-        self.service = ('127.0.0.1', 10088)
+        self.service = ('127.0.0.1', 0)
+
+        self.user = None
 
     def listen(self):
         while True:
@@ -17,7 +17,6 @@ class Client:
                 'MESSAGE': self.message,
                 'LOGIN': self.login,
                 'REGISTER': self.register,
-                'CHAT': self.chat,
                 'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
                 'ERROR': self.error
@@ -36,13 +35,13 @@ class Client:
     def register(self):
         pass
 
-    def chat(self):
+    def chat(self,message):
+        header = 'MESSAGE'
         t = time.localtime()
         date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-        name = 'shangxuwei'
-        msg = f"{date}\n\n{name}\n\n你好".encode('utf-8')
+        name = self.user
+        msg = f"{date}\n\n{name}\n\n{message}".encode('utf-8')
         sent = self.sock.sendto(msg, self.service)
-        print(sent)
         data, server = self.sock.recvfrom(4096)
         print(data.decode("utf-8"))
 
@@ -59,4 +58,4 @@ if __name__ == '__main__':
     client = Client()
     listen = Thread(target=client.listen)
     listen.start()
-    client.chat()
+    client.chat('')

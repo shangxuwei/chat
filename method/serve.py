@@ -10,7 +10,8 @@ class Service:
         while True:
             print('1')
             data, address = self.sock.recvfrom(4096)
-            print('2')
+            if data:
+                pass
             if address not in self.ip_cache:
                 self.ip_cache.append(address)
             try:
@@ -18,7 +19,7 @@ class Service:
                 method = {
                     'LOGIN': self.login,
                     'REGISTER': self.register,
-                    'CHAT': self.chat,
+                    'MESSAGE': self.message,
                     'UPLOAD': self.upload,
                     'DOWNLOAD':self.download
                 }
@@ -27,13 +28,14 @@ class Service:
                 print('ERROR')
                 self.sock.sendto('ERROR\n\n'.encode('utf-8'),address)
 
+
     def login(self):
         pass
 
     def register(self):
         pass
 
-    def chat(self, date, name, message):
+    def message(self, date, name, message):
         print(f'{date}  {name}:{message}')
         for address in self.ip_cache:
             self.sock.sendto(f'{date}  {name}:{message}'.encode('UTF-8'), address)
