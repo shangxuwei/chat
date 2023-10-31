@@ -1,4 +1,5 @@
 import socket
+import time
 
 class Service:
     def __init__(self):
@@ -8,14 +9,14 @@ class Service:
 
     def listen(self):
         while True:
-            print('1')
             data, address = self.sock.recvfrom(4096)
             if data:
                 pass
             if address not in self.ip_cache:
                 self.ip_cache.append(address)
             try:
-                header, date, name, message = data.decode('utf-8').split("\n\n",3)
+                header, date, name, payload = data.decode('utf-8').split("\n\n",3)
+                self.sock.sendto(f'ACK\n\n{date}\n\n{name}\n\n{date}'.encode('utf-8'),address)
                 method = {
                     'LOGIN': self.login,
                     'REGISTER': self.register,
@@ -23,10 +24,13 @@ class Service:
                     'UPLOAD': self.upload,
                     'DOWNLOAD':self.download
                 }
-                method[header](date,name,message)
-            except:
+                method[header](date,name,payload)
+                print(f'ACK to {address},{header}')
+            except Exception as e:
+                print(e)
+                print(data.decode('utf-8'))
                 print('ERROR')
-                self.sock.sendto('ERROR\n\n'.encode('utf-8'),address)
+                self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
 
     def login(self):
@@ -35,10 +39,12 @@ class Service:
     def register(self):
         pass
 
-    def message(self, date, name, message):
-        print(f'{date}  {name}:{message}')
+    def message(self, date, name, payload):
+        t = time.localtime(float(date))
+        dt = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        print(f'[{dt}]{name}:{payload}')
         for address in self.ip_cache:
-            self.sock.sendto(f'{date}  {name}:{message}'.encode('UTF-8'), address)
+            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8'), address)
 
         # TODO: SQL操作
         pass
