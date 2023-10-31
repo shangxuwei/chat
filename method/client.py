@@ -77,4 +77,7 @@ if __name__ == '__main__':
     client = Client()
     listen = Thread(target=client.listen)
     listen.start()
-    client.chat('hello')
+    while True:
+        msg = input('>>>')
+        print('\r'+' '*(len(msg)+3)+'\r')
+        client.chat(msg)
