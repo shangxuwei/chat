@@ -14,7 +14,7 @@ class Service:
             if address not in self.ip_cache:
                 self.ip_cache.append(address)
             try:
-                header, date, name, message = data.decode('utf-8').split("\n\n",3)
+                header, date, name, payload = data.decode('utf-8').split("\n\n",3)
                 method = {
                     'LOGIN': self.login,
                     'REGISTER': self.register,
@@ -22,11 +22,11 @@ class Service:
                     'UPLOAD': self.upload,
                     'DOWNLOAD':self.download
                 }
-                method[header](date,name,message)
+                method[header](date,name,payload)
             except:
                 print(data.decode('utf-8'))
                 print('ERROR')
-                self.sock.sendto('ERROR\n\n'.encode('utf-8'),address)
+                self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
 
     def login(self):
@@ -35,10 +35,10 @@ class Service:
     def register(self):
         pass
 
-    def message(self, date, name, message):
-        print(f'{date}  {name}:{message}')
+    def message(self, date, name, payload):
+        print(f'{date}  {name}:{payload}')
         for address in self.ip_cache:
-            self.sock.sendto(f'MESSAGE\n\n{date}  {name}:{message}'.encode('UTF-8'), address)
+            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8'), address)
 
         # TODO: SQL操作
         pass
