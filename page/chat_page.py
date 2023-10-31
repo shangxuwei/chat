@@ -54,7 +54,7 @@ class ChatGui:
         self.fri_list.place(x=850, y=30)
         s2.config(command=self.fri_list.yview)
         # 好友分组
-        self.fri_tree1 = self.fri_list.insert('', 0, 'frist', text='家人', )
+        self.fri_tree1 = self.fri_list.insert('', 0, 'first', text='家人', )
         self.fri_tree1_1 = self.fri_list.insert(self.fri_tree1, 0, '001', text='admin1', )
         self.fri_tree1_2 = self.fri_list.insert(self.fri_tree1, 1, '002', text='admin2', )
         self.fri_tree2 = self.fri_list.insert('', 1, 'second', text='好友', )
