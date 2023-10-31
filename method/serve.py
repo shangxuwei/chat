@@ -16,23 +16,25 @@ class Service:
                 self.ip_cache.append(address)
             try:
                 header, date, name, payload = data.decode('utf-8').split("\n\n",3)
-                self.sock.sendto(f'ACK\n\n{date}\n\n{name}\n\n{date}'.encode('utf-8'),address)
+                self.sock.sendto(f'ACK\n\n{header}\n\n{date}\n\n{name}'.encode('utf-8'),address)
                 method = {
                     'LOGIN': self.login,
                     'REGISTER': self.register,
                     'MESSAGE': self.message,
                     'UPLOAD': self.upload,
-                    'DOWNLOAD':self.download
+                    'DOWNLOAD':self.download,
+                    'ONLINE':self.online
                 }
                 method[header](date,name,payload)
-                print(f'ACK to {address},{header}')
+                print(f'ACK to {address},{header}, {header}{date}{name}')
             except Exception as e:
                 print(e)
                 print(data.decode('utf-8'))
                 print('ERROR')
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
-
+    def online(self):
+        pass
     def login(self):
         pass
 

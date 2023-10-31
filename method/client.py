@@ -12,6 +12,9 @@ class Client:
 
         self.rcv = []
 
+        listen = Thread(target=self.listen)
+        listen.start()
+
     def listen(self):
         while True:
             data, address = self.sock.recvfrom(4096)
@@ -24,11 +27,26 @@ class Client:
                 'ERROR': self.error,
                 'ACK': self.ack
             }
-            header, date, name, payload = data.decode('utf-8').split("\n\n",3)
-            method[header](date,name,payload)
+            pkt = data.decode('utf-8').split("\n\n",3)
+            method[pkt[0]](pkt)
 
-    def ack(self,date,name,payload):
-        self.rcv.append(hash(f'{date}{name}{payload}'))
+    def online(self):
+        pass
+    def send(self,header,date,name,payload):
+        msg = f"{header}\n\n{date}\n\n{name}\n\n{payload}".encode('utf-8')
+        retry = 0
+        while not self.ack_check(hash(f'{header}{date}{name}')) and retry <= 5:
+            self.sock.sendto(msg, self.service)
+            time.sleep(1)
+            retry += 1
+        return retry <= 5
+
+    def ack(self,pkt):
+        header = pkt[1]
+        date = pkt[2]
+        name = pkt[3]
+        print(f'ack:{header}{date}{name}')
+        self.rcv.append(hash(f'{header}{date}{name}'))
 
     def ack_check(self, flag):
         if flag not in self.rcv:
@@ -36,9 +54,11 @@ class Client:
         self.rcv.remove(flag)
         return True
 
-    def message(self,date,name,payload):
+    def message(self,pkt):
+        header, date, name, payload = pkt
         t = time.localtime(float(date))
         date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+
         print(f'[{date}]{name}: {payload}')
 
     def login(self):
@@ -52,16 +72,8 @@ class Client:
         t = time.localtime()
         date = time.mktime(t)
         name = self.user
-        msg = f"{header}\n\n{date}\n\n{name}\n\n{message}".encode('utf-8')
-        retry = 0
-        while not self.ack_check(hash(f'{date}{self.user}{date}')) and retry <= 5:
-            self.sock.sendto(msg, self.service)
-            time.sleep(1)
-            retry += 1
-        if retry <= 5:
-            return 1
-        else:
-            return 0
+        flag = self.send(header,date,name,message)
+        return flag
 
 
     def upload(self):
@@ -70,13 +82,11 @@ class Client:
     def download(self):
         pass
 
-    def error(self,date,name,payload):
+    def error(self,pkt):
         print('error')
 
 if __name__ == '__main__':
     client = Client()
-    listen = Thread(target=client.listen)
-    listen.start()
     while True:
         msg = input('>>>')
         print('\r'+' '*(len(msg)+3)+'\r')
