@@ -1,5 +1,6 @@
 import socket
 import time
+import pymysql
 
 class Service:
     def __init__(self):

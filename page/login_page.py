@@ -61,20 +61,22 @@ class LoginGui:
             pwd = new_pwd.get()
             npf = new_pwd_confirm.get()
             usr = new_name.get()
-
+            if len(usr) >= 10:
+                tkinter.messagebox.showerror('Error','用户名过长')
             # 这里就是判断，如果两次密码输入不一致，则提示Error, Password and confirm password must be the same!
-            if pwd != npf:
-                tkinter.messagebox.showerror('Error', 'Password and confirm password must be the same!')
-            flag = self.tools.register(usr,pwd)
-            # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
-            if flag == 1:
-                tkinter.messagebox.showerror('Error', 'The user has already signed up!')
+            elif pwd != npf:
+                tkinter.messagebox.showerror('Error', '两次输入的密码必须相同!')
+            else:
+                flag = self.tools.register(usr,pwd)
+                # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
+                if flag == 1:
+                    tkinter.messagebox.showerror('Error', 'The user has already signed up!')
 
-            # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
-            elif flag == 2:
-                tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
-                # 然后销毁窗口。
-                window_sign_up.destroy()
+                # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
+                elif flag == 2:
+                    tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
+                    # 然后销毁窗口。
+                    window_sign_up.destroy()
 
         # 定义长在窗口上的窗口
         window_sign_up = tk.Toplevel(self.init_window_name)
