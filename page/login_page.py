@@ -42,16 +42,15 @@ class LoginGui:
         # 这两行代码就是获取用户输入的usr_name和usr_pwd
         usr_name = self.var_usr_name.get()
         usr_pwd = self.var_usr_pwd.get()
-        self.tools.login(usr_name, usr_pwd)
-        flag = self.tools.login_back()
+        flag = self.tools.login(usr_name, usr_pwd)
 
-        # 如果用户名和密码与文件中的匹配成功，则会登录成功，并跳出弹窗how are you? 加上你的用户名。
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
             self.switch(self.init_window_name)
-            # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
         elif flag == 0:
             tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
+        elif flag == 2:
+            tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
 
 
 
