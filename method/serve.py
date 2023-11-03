@@ -1,52 +1,61 @@
 import socket
 import time
+import SQLTools
+
 
 class Service:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 10088))
-        self.ip_cache = []
+        self.ip_pool = []
+        self.SQL_obj = SQLTools.SQL_Operate()
 
     def listen(self):
         while True:
             data, address = self.sock.recvfrom(4096)
-            if data:
-                pass
-            if address not in self.ip_cache:
-                self.ip_cache.append(address)
             try:
-                header, date, name, payload = data.decode('utf-8').split("\n\n",3)
-                self.sock.sendto(f'ACK\n\n{date}\n\n{name}\n\n{date}'.encode('utf-8'),address)
+                header, date, user, payload = data.decode('utf-8').split("\n\n", 3)
+                print(header, date, user, payload)
                 method = {
-                    'LOGIN': self.login,
-                    'REGISTER': self.register,
-                    'MESSAGE': self.message,
+                    'LOGIN': [self.login, address, user, payload],
+                    'REGISTER': [self.register, user, payload],
+                    'MESSAGE': [self.message, date, user, payload],
                     'UPLOAD': self.upload,
-                    'DOWNLOAD':self.download
+                    'DOWNLOAD': self.download,
+                    'ONLINE': [self.online, address, user]
                 }
-                method[header](date,name,payload)
-                print(f'ACK to {address},{header}')
+                method[header][0](*(method[header][1:]))
+                if header not in ['LOGIN',"REGISTER"]:
+                    ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
+                    self.sock.sendto(ack_mag, address)
+                    ack_pak = f'{header}{date}{user}'
+                    print(f'ACK to {address}, {header}, {user}, hash:{hash(ack_pak)}')
             except Exception as e:
                 print(e)
                 print(data.decode('utf-8'))
                 print('ERROR')
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
+    def online(self,address,name):
+        if (name,address) not in self.ip_pool:
+            self.ip_pool.append((name,address))
 
-    def login(self):
-        pass
+    def login(self,address,user,payload):
+        flag = self.SQL_obj.login_check(user,payload)
+        self.sock.sendto(str(flag).encode("utf-8"),address)
+        
 
-    def register(self):
+    def register(self,user,payload):
+        print('register:', user, payload)
         pass
 
     def message(self, date, name, payload):
         t = time.localtime(float(date))
         dt = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-        print(f'[{dt}]{name}:{payload}')
-        for address in self.ip_cache:
-            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8'), address)
+        for _,address in self.ip_pool:
+            msg = f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8')
+            self.sock.sendto(msg, address)
 
-        # TODO: SQL操作
         pass
 
     def upload(self):

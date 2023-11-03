@@ -2,14 +2,16 @@ import tkinter as tk
 import tkinter.messagebox
 
 from page import chat_page
-from method import login, register
+from method import client
 
 
 class LoginGui:
     def __init__(self, init_window_name):
         # 初始化页面配置
-        self.init_window_name = init_window_name
+        self.tools = client.Client()
 
+        # 页面控件定义
+        self.init_window_name = init_window_name
         self.init_window_name.title("chat")  # 窗口名
         self.init_window_name.geometry('400x300')
 
@@ -17,7 +19,6 @@ class LoginGui:
         tk.Label(self.init_window_name, text='Password:', font=('Arial', 14)).place(x=10, y=90)
 
         self.var_usr_name = tk.StringVar()
-        self.var_usr_name.set('example@python.com')
         self.entry_usr_name = tk.Entry(self.init_window_name, textvariable=self.var_usr_name, font=('Arial', 14))
         self.entry_usr_name.place(x=120, y=55)
 
@@ -25,7 +26,7 @@ class LoginGui:
         self.entry_usr_pwd = tk.Entry(self.init_window_name, textvariable=self.var_usr_pwd, font=('Arial', 14), show='*')
         self.entry_usr_pwd.place(x=120, y=95)
 
-        self.btn_login = tk.Button(self.init_window_name, text='Login', command=lambda:self.usr_login(self.init_window_name))
+        self.btn_login = tk.Button(self.init_window_name, text='Login', command=self.usr_login)
         self.btn_login.place(x=100, y=200)
         self.btn_sign_up = tk.Button(self.init_window_name, text='Sign up', command=self.usr_sign_up)
         self.btn_sign_up.place(x=200, y=200)
@@ -37,19 +38,19 @@ class LoginGui:
         chat_page.ChatGui(init_window)
         init_window.mainloop()
     #用户登录
-    def usr_login(self,oldwin):
+    def usr_login(self):
         # 这两行代码就是获取用户输入的usr_name和usr_pwd
         usr_name = self.var_usr_name.get()
         usr_pwd = self.var_usr_pwd.get()
-        flag = login.login(usr_name, usr_pwd)
+        flag = self.tools.login(usr_name, usr_pwd)
 
-        # 如果用户名和密码与文件中的匹配成功，则会登录成功，并跳出弹窗how are you? 加上你的用户名。
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
-            self.switch(oldwin)
-            # 如果用户名匹配成功，而密码输入错误，则会弹出'Error, your password is wrong, try again.'
-        elif flag == 2:
+            self.switch(self.init_window_name)
+        elif flag == 0:
             tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
+        elif flag == 2:
+            tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
 
 
 
@@ -57,23 +58,25 @@ class LoginGui:
     def usr_sign_up(self):
         def sign_to_chat():
         # 以下三行就是获取我们注册时所输入的信息
-            np = new_pwd.get()
+            pwd = new_pwd.get()
             npf = new_pwd_confirm.get()
-            nn = new_name.get()
-
+            usr = new_name.get()
+            if len(usr) >= 10:
+                tkinter.messagebox.showerror('Error','用户名过长')
             # 这里就是判断，如果两次密码输入不一致，则提示Error, Password and confirm password must be the same!
-            if np != npf:
-                tkinter.messagebox.showerror('Error', 'Password and confirm password must be the same!')
-            flag = register.register(nn, np)
-            # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
-            if flag == 1:
-                tkinter.messagebox.showerror('Error', 'The user has already signed up!')
+            elif pwd != npf:
+                tkinter.messagebox.showerror('Error', '两次输入的密码必须相同!')
+            else:
+                flag = self.tools.register(usr,pwd)
+                # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
+                if flag == 1:
+                    tkinter.messagebox.showerror('Error', 'The user has already signed up!')
 
-            # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
-            elif flag == 2:
-                tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
-                # 然后销毁窗口。
-                window_sign_up.destroy()
+                # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
+                elif flag == 2:
+                    tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
+                    # 然后销毁窗口。
+                    window_sign_up.destroy()
 
         # 定义长在窗口上的窗口
         window_sign_up = tk.Toplevel(self.init_window_name)
