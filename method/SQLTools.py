@@ -56,9 +56,12 @@ class SQL_Operate:
         if not bool(self.cur.execute("select 1 from information_schema.schemata  where schema_name='easychat';")):
             self.cur.execute('CREATE DATABASE easychat')
             self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db='easychat',
-                               user=mysql_user,password=mysql_pwd,charset='utf8mb4')
+                                      user=mysql_user,password=mysql_pwd,charset='utf8mb4')
             self.cur = self.conn.cursor()
             self.__build()
+
+        self.conn.select_db(mysql_db)
+        self.cur = self.conn.cursor()
 
     def __build(self):
         for table in DBS:
@@ -81,6 +84,25 @@ class SQL_Operate:
             print(sql)
             self.cur.execute(sql)
 
+    def login_check(self,user,pwd):
 
+        sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
+        self.cur.execute(sql_select)
+        result = self.cur.fetchall()
+        if len(result) == 0:
+            return 0
+        if pwd != result[0][1]:
+            return 0
+        return 1
 
-SQL_obj = SQL_Operate()
+    def register(self,user,pwd):
+        sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
+        self.cur.execute(sql_select)
+        if len(self.cur.fetchall()):
+            # user exist
+            return 0
+        sql_select = f'INSERT INTO userinfo (username,password) VALUES ("{user}","{pwd}")'
+        self.cur.execute(sql_select)
+        self.conn.commit()
+        return 1
+        

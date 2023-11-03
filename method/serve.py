@@ -1,12 +1,14 @@
 import socket
 import time
-import pymysql
+import SQLTools
+
 
 class Service:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 10088))
         self.ip_pool = []
+        self.SQL_obj = SQLTools.SQL_Operate()
 
     def listen(self):
         while True:
@@ -17,7 +19,7 @@ class Service:
                 ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
                 self.sock.sendto(ack_mag, address)
                 method = {
-                    'LOGIN': [self.login,user,payload],
+                    'LOGIN': [self.login,address,user,payload],
                     'REGISTER': [self.register,user,payload],
                     'MESSAGE': [self.message,date,user,payload],
                     'UPLOAD': self.upload,
@@ -38,8 +40,12 @@ class Service:
         if (name,address) not in self.ip_pool:
             self.ip_pool.append((name,address))
 
-    def login(self,user,payload):
-        print('login:',user,payload)
+    def login(self,address,user,payload):
+        date
+        msg = f"LOGIN_BACK\n\n{date}"
+        self.sock.sendto()
+        return self.SQL_obj.login_check(user,payload)
+        
 
     def register(self,user,payload):
         print('register:', user, payload)
