@@ -49,13 +49,15 @@ class SQL_Operate:
         mysql_port = 3306
         mysql_db = 'easychat'
         mysql_user = 'root'
-        mysql_pwd = 'aa123456bb'
+        mysql_pwd = ''
+
+
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
 
-        if not bool(self.cur.execute("select 1 from information_schema.schemata  where schema_name='easychat';")):
-            self.cur.execute('CREATE DATABASE easychat')
-            self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db='easychat',
+        if not bool(self.cur.execute(f"select 1 from information_schema.schemata  where schema_name='{mysql_db}';")):
+            self.cur.execute(f'CREATE DATABASE {mysql_db}')
+            self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db=mysql_db,
                                       user=mysql_user,password=mysql_pwd,charset='utf8mb4')
             self.cur = self.conn.cursor()
             self.__build()
@@ -85,7 +87,6 @@ class SQL_Operate:
             self.cur.execute(sql)
 
     def login_check(self,user,pwd):
-
         sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
         self.cur.execute(sql_select)
         result = self.cur.fetchall()
