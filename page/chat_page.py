@@ -28,7 +28,7 @@ class ChatGui:
         self.log_data_Text = Text(self.init_window_name, width=110, height=4, yscrollcommand=s1.set)
         s1.config(command=self.log_data_Text.yview)
         self.log_data_Text.place(x=0,y=470)
-        self.send_button = Button(self.init_window_name, text="send", bg="lightblue", width=10, )
+        self.send_button = Button(self.init_window_name, text="send", bg="lightblue", width=10,command=self.send)
         self.send_button.place(x=690,y=540)
         self.face_button = Button(self.init_window_name, text="表情包", width=10, )
         self.face_button.place(x=440,y=435)
@@ -68,6 +68,12 @@ class ChatGui:
             # TODO:唤起好友聊天页
             print(self.fri_list.selection())
         self.fri_list.bind("<Double-Button-1>", mouse_clicked)
+
+    def send(self):
+        self.init_data_Text.configure(state='normal')
+        self.init_data_Text.insert(INSERT, 'Hello, World!\n')
+        self.init_data_Text.configure(state='disabled')
+        self.init_data_Text.update()
 
     def switch(self, oldwin):
         init_window = Tk()
