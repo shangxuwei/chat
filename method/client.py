@@ -80,7 +80,7 @@ class Client:
                 keep.start()
             return int(data)
         except:
-            return 3
+            return 2
 
     def register(self,user,password):
         header = 'REGISTER'
