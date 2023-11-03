@@ -3,6 +3,7 @@ import time
 from threading import Thread
 import hashlib
 
+
 class Client:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -12,11 +13,8 @@ class Client:
         self.user = 'none'
 
         self.ackpool = []
+        self.online = 0
 
-        listen = Thread(target=self.listen)
-        listen.start()
-        keep = Thread(target=self.online)
-        keep.start()
 
     def listen(self):
         while True:
@@ -24,8 +22,6 @@ class Client:
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
                 'MESSAGE': [self.message,date,user,payload],
-                'LOGIN_BACK': [self.login_back,payload]
-                'REGISTER_BACK': self.register_back,
                 'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
                 'ERROR': self.error,
@@ -33,7 +29,7 @@ class Client:
             }
             method[header][0](*(method[header][1:]))
 
-    def online(self):
+    def keep(self):
         while True:
             date = time.mktime(time.localtime())
             self.send("ONLINE",date,self.user,'online')
@@ -70,10 +66,21 @@ class Client:
         md5_object = hashlib.md5()
         md5_object.update(password.encode('utf-8'))
         md5_result = md5_object.hexdigest()
-        self.send(header,date,user,md5_result)
-
-    def login_back(self):
-        return
+        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
+        self.sock.sendto(msg,self.service)
+        try:
+            self.sock.settimeout(5)
+            data, address = self.sock.recvfrom(4096)
+            self.sock.settimeout(None)
+            data = data.decode("utf-8")
+            if int(data):
+                listen = Thread(target=self.listen)
+                listen.start()
+                keep = Thread(target=self.keep)
+                keep.start()
+            return int(data)
+        except:
+            return 3
 
     def register(self,user,password):
         header = 'REGISTER'
@@ -82,10 +89,9 @@ class Client:
         md5_object.update(password.encode('utf-8'))
         md5_result = md5_object.hexdigest()
         self.send(header, date, user, md5_result)
-        return 2
+        date, address = self.sock.recvfrom(4096)
+        return int(date)
 
-    def register_back(self):
-        pass
 
     def chat(self,message):
         header = 'MESSAGE'
@@ -102,12 +108,5 @@ class Client:
     def download(self):
         pass
 
-    def error(self,pkt):
+    def error(self):
         print('error')
-
-# if __name__ == '__main__':
-#     client = Client()
-#     while True:
-#         msg = input('>>>')
-#         print('\r'+' '*(len(msg)+3)+'\r')
-#         client.chat(msg)
