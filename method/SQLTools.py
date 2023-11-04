@@ -49,7 +49,7 @@ class SQL_Operate:
         mysql_port = 3306
         mysql_db = 'easychat'
         mysql_user = 'root'
-        mysql_pwd = 'aa123456bb'
+        mysql_pwd = ''
 
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -90,9 +90,7 @@ class SQL_Operate:
         sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
         self.cur.execute(sql_select)
         result = self.cur.fetchall()
-        if len(result) == 0:
-            return 0
-        if pwd != result[0][1]:
+        if len(result) == 0 or pwd != result[0][1]:
             return 0
         return 1
 
