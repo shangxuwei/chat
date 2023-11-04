@@ -69,7 +69,7 @@ class Client:
         msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
         self.sock.sendto(msg,self.service)
         try:
-            self.sock.settimeout(5)
+            self.sock.settimeout(1)
             data, address = self.sock.recvfrom(4096)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
@@ -91,7 +91,7 @@ class Client:
         msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
         self.sock.sendto(msg,self.service)
         try:
-            self.sock.settimeout(5)
+            self.sock.settimeout(1)
             data, address = self.sock.recvfrom(4096)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
