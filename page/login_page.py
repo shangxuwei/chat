@@ -82,11 +82,12 @@ class LoginGui:
 
         # 定义长在窗口上的窗口
         window_sign_up = tk.Toplevel(self.init_window_name)
+        window_sign_up.wm_attributes('-topmost', 1)
+        window_sign_up.resizable(width=False, height=False)
         window_sign_up.geometry('300x200')
         window_sign_up.title('Sign up window')
 
         new_name = tk.StringVar()  # 将输入的注册名赋值给变量
-        new_name.set('example@python.com')  # 将最初显示定为'example@python.com'
         tk.Label(window_sign_up, text='User name: ').place(x=10, y=10)  # 将`User name:`放置在坐标（10,10）。
         entry_new_name = tk.Entry(window_sign_up, textvariable=new_name)  # 创建一个注册名的`entry`，变量为`new_name`
         entry_new_name.place(x=130, y=10)  # `entry`放置在坐标（150,10）.
