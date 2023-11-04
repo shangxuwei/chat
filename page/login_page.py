@@ -69,14 +69,16 @@ class LoginGui:
             else:
                 flag = self.tools.register(usr,pwd)
                 # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
-                if flag == 1:
+                if flag == 0:
                     tkinter.messagebox.showerror('Error', 'The user has already signed up!')
 
                 # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
-                elif flag == 2:
+                elif flag == 1:
                     tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
                     # 然后销毁窗口。
                     window_sign_up.destroy()
+                elif flag == 2:
+                    tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
 
         # 定义长在窗口上的窗口
         window_sign_up = tk.Toplevel(self.init_window_name)

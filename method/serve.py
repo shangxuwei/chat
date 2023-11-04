@@ -18,7 +18,7 @@ class Service:
                 print(header, date, user, payload)
                 method = {
                     'LOGIN': [self.login, address, user, payload],
-                    'REGISTER': [self.register, user, payload],
+                    'REGISTER': [self.register, address, user, payload],
                     'MESSAGE': [self.message, date, user, payload],
                     'UPLOAD': self.upload,
                     'DOWNLOAD': self.download,
@@ -45,9 +45,9 @@ class Service:
         self.sock.sendto(str(flag).encode("utf-8"),address)
         
 
-    def register(self,user,payload):
-        print('register:', user, payload)
-        pass
+    def register(self,address,user,payload):
+        flag = self.SQL_obj.register(user,payload)
+        self.sock.sendto(str(flag).encode("utf-8"), address)
 
     def message(self, date, name, payload):
         t = time.localtime(float(date))

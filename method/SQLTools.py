@@ -49,7 +49,7 @@ class SQL_Operate:
         mysql_port = 3306
         mysql_db = 'easychat'
         mysql_user = 'root'
-        mysql_pwd = ''
+        mysql_pwd = 'aa123456bb'
 
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')

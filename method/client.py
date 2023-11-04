@@ -88,10 +88,16 @@ class Client:
         md5_object = hashlib.md5()
         md5_object.update(password.encode('utf-8'))
         md5_result = md5_object.hexdigest()
-        self.send(header, date, user, md5_result)
-        date, address = self.sock.recvfrom(4096)
-        return int(date)
-
+        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
+        self.sock.sendto(msg,self.service)
+        try:
+            self.sock.settimeout(5)
+            data, address = self.sock.recvfrom(4096)
+            self.sock.settimeout(None)
+            data = data.decode("utf-8")
+            return int(data)
+        except:
+            return 2
 
     def chat(self,message):
         header = 'MESSAGE'
