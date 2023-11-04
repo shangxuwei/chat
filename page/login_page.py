@@ -2,7 +2,7 @@ import tkinter as tk
 import tkinter.messagebox
 
 from page import chat_page
-from method import client
+from method.local import client
 
 
 class LoginGui:
@@ -31,11 +31,11 @@ class LoginGui:
         self.btn_sign_up = tk.Button(self.init_window_name, text='Sign up', command=self.usr_sign_up)
         self.btn_sign_up.place(x=200, y=200)
 
-    def switch(self,oldwin):
+    def switch(self,oldwin,tools):
         oldwin.destroy()
         init_window = tk.Tk()
         init_window.resizable(width=False,height=False)
-        chat_page.ChatGui(init_window)
+        chat_page.ChatGui(init_window,tools)
         init_window.mainloop()
     #用户登录
     def usr_login(self):
@@ -46,7 +46,7 @@ class LoginGui:
 
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
-            self.switch(self.init_window_name)
+            self.switch(self.init_window_name,self.tools)
         elif flag == 0:
             tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
         elif flag == 2:
@@ -70,15 +70,15 @@ class LoginGui:
                 flag = self.tools.register(usr,pwd)
                 # 如果用户名已经在我们的数据文件中，则提示Error, The user has already signed up!
                 if flag == 0:
-                    tkinter.messagebox.showerror('Error', 'The user has already signed up!')
+                    tkinter.messagebox.showerror('Error', '用户已被注册!')
 
                 # 最后如果输入无以上错误，则将注册输入的信息记录到文件当中，并提示注册成功Welcome！,You have successfully signed up!，然后销毁窗口。
                 elif flag == 1:
-                    tkinter.messagebox.showinfo('Welcome', 'You have successfully signed up!')
+                    tkinter.messagebox.showinfo('Welcome', '注册成功!')
                     # 然后销毁窗口。
                     window_sign_up.destroy()
                 elif flag == 2:
-                    tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
+                    tkinter.messagebox.showerror('Error', '连接服务器超时请重试')
 
         # 定义长在窗口上的窗口
         window_sign_up = tk.Toplevel(self.init_window_name)
