@@ -5,10 +5,13 @@
 - USERINFO
 
   | *USERNAME | VARCHAR(33) | NOT NULL | 用户名                  |
-  | --------- |-------------| -------- | ----------------------- |
   | PASSWORD  | VARCHAR(32) | NOT NULL | 密码（使用md5格式村粗） |
 
+
   
+- GROUPINFO
+
+
 
 - GROUP_CHAT_HISTORY
 
