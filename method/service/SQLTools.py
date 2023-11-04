@@ -1,42 +1,62 @@
+import time
+
 import pymysql
 
 DBS = {
     'userinfo':{
-        'username': ('varchar(33)',1),
-        'password': ('varchar(32)',1),
+        'username': 'varchar(33) NOT NULL',
+        'password': 'varchar(32) NOT NULL',
         'KEY':['username'],
         'FOREIGN': None
     },
+    'groupinfo':{
+        'group_name': 'varchar(33) NOT NULL',
+        'manager': 'varchar(33) NOT NULL',
+        'group_number': 'varchar(33) NOT NULL',
+        'KEY': ['group_name'],
+        'FOREIGN': 'FOREIGN KEY (manager) REFERENCES userinfo(username),'
+                    'FOREIGN KEY (group_number) REFERENCES userinfo(username)'
+    },
     'group_chat_history':{
-        'id': ('int',1),
-        'source_user': ('varchar(33)',1),
-        'time': ('datetime',1),
-        'content': ('varchar(600)',1),
+        'id': 'int AUTO_INCREMENT NOT NULL',
+        'source_user': 'varchar(33) NOT NULL',
+        'target_group': 'varchar(33) NOT NULL',
+        'time': 'datetime NOT NULL',
+        'content': 'varchar(600) NOT NULL',
         'KEY': ['id'],
+        'FOREIGN': 'FOREIGN KEY (source_user) REFERENCES userinfo(username),'
+                   'FOREIGN KEY (target_group) REFERENCES groupinfo(group_name)'
+    },
+    'file':{
+        'source_user': 'varchar(33) NOT NULL',
+        'time': 'datetime NOT NULL',
+        'filecontent': 'longblob NOT NULL',
+        'md5': 'varchar(32) NOT NULL',
+        'KEY': ['md5'],
         'FOREIGN': 'FOREIGN KEY (source_user) REFERENCES userinfo(username)'
     },
-    'group_file_history':{
-        'id': ('int',1),
-        'source_user': ('varchar(33)',1),
-        'time': ('datetime',1),
-        'filename': ('varchar(50)',1),
-        'filecontent': ('longblob',1),
+    'file_public':{
+        'id': 'int AUTO_INCREMENT NOT NULL',
+        'filename': 'varchar(50) NOT NULL',
+        'file_hash': 'varchar(32) NOT NULL',
+        'downloadable_user': 'varchar(33) NOT NULL',
         'KEY': ['id'],
-        'FOREIGN': 'FOREIGN KEY (source_user) REFERENCES userinfo(username)'
+        'FOREIGN': 'FOREIGN KEY (file_hash) REFERENCES file(md5),'
+                   'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username)'
     },
     'friends':{
-        'username1': ('varchar(33)',1),
-        'username2': ('varchar(33)',1),
+        'username1': 'varchar(33) NOT NULL NOT NULL',
+        'username2': 'varchar(33) NOT NULL',
         'KEY': ['username1','username2'],
         'FOREIGN': 'FOREIGN KEY (username1) REFERENCES userinfo(username),'
                    'FOREIGN KEY (username2) REFERENCES userinfo(username)'
     },
     'private_chat_history':{
-        'id': ('int',1),
-        'target_user': ('varchar(33)',1),
-        'source_user': ('varchar(33)',1),
-        'time': ('datetime',1),
-        'content': ('varchar(600)',1),
+        'id': 'int AUTO_INCREMENT NOT NULL',
+        'target_user': 'varchar(33) NOT NULL',
+        'source_user': 'varchar(33) NOT NULL',
+        'time': 'datetime NOT NULL',
+        'content': 'varchar(600) NOT NULL',
         'KEY': ['id'],
         'FOREIGN': 'FOREIGN KEY (target_user) REFERENCES userinfo(username),'
                    'FOREIGN KEY (source_user) REFERENCES userinfo(username)'
@@ -49,7 +69,7 @@ class SQL_Operate:
         mysql_port = 3306
         mysql_db = 'easychat'
         mysql_user = 'root'
-        mysql_pwd = ''
+        mysql_pwd = 'aa123456bb'
 
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -66,16 +86,12 @@ class SQL_Operate:
         self.cur = self.conn.cursor()
 
     def __build(self):
+        print("正在初始化数据库")
         for table in DBS:
-            print(table)
             sql = f'CREATE TABLE {table} ('
             for field in DBS[table]:
                 if field not in ['KEY','FOREIGN']:
-                    sql += f'{field} {DBS[table][field][0]}'
-                    if DBS[table][field][1]:
-                        sql += ' NOT NULL,'
-                    else:
-                        sql +=','
+                    sql += f'{field} {DBS[table][field]},'
                 elif field == 'KEY':
                     keys = ','.join(DBS[table][field])
                     sql += f'PRIMARY KEY ({keys})'
@@ -83,8 +99,9 @@ class SQL_Operate:
                     if DBS[table][field] is not None:
                         sql += f',{DBS[table][field]}'
             sql += ');'
-            print(sql)
             self.cur.execute(sql)
+            print(sql)
+        print("初始化完成")
 
     def login_check(self,user,pwd):
         sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
@@ -104,4 +121,16 @@ class SQL_Operate:
         self.cur.execute(sql_select)
         self.conn.commit()
         return 1
-        
+
+    def save_msg(self,date,usr,model,target,msg):
+        t = time.localtime(float(date))
+        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        if model:
+            sql_select = (f'INSERT INTO private_chat_history (target_user, source_user, time, content)'
+                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
+
+        else:
+            sql_select = (f'INSERT INTO group_chat_history (target_group, source_user, time, content)'
+                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
+        self.cur.execute(sql_select)
+        self.conn.commit()

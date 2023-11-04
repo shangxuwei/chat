@@ -2,9 +2,9 @@ import socket
 import time
 import SQLTools
 import logging
-logging.basicConfig(filename='log.txt',
-                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
-                     level=logging.DEBUG)
+logging.basicConfig(filename='../log.txt',
+                    format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
+                    level=logging.DEBUG)
 
 
 class Service:
@@ -32,8 +32,9 @@ class Service:
                     ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
                     self.sock.sendto(ack_mag, address)
                     ack_pak = f'{header}{date}{user}'
-                    print(f'ACK to {address}, {header}, {user}, hash:{hash(ack_pak)}')
+                    logging.debug(f'ACK to {address}, {header}, {user}, hash:{hash(ack_pak)}')
             except Exception as e:
+                print(e)
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
     def online(self,address,name):
@@ -52,11 +53,10 @@ class Service:
         logging.info(f"address:{address} user:{user} res:{flag}")
 
     def message(self, date, name, payload):
-        t = time.localtime(float(date))
-        dt = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-        for _,address in self.ip_pool:
-            msg = f'MESSAGE\n\n{date}\n\n{name}\n\n{payload}'.encode('UTF-8')
-            self.sock.sendto(msg, address)
+        target, msg = payload.split('\n', 1)
+        target = target.strip("[]").split(",")
+        self.SQL_obj.save_msg(date,name,int(target[0]),target[1],msg)
+
 
     def upload(self):
         pass
