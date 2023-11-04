@@ -5,12 +5,12 @@ import hashlib
 
 
 class Client:
-    def __init__(self):
+    def __init__(self,user='none'):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 0))
         # 服务端地址
         self.service = ('127.0.0.1', 10088)
-        self.user = 'none'
+        self.user = user
 
         self.ackpool = []
         self.online = 0
@@ -24,7 +24,7 @@ class Client:
                 'MESSAGE': [self.message,date,user,payload],
                 'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
-                'ERROR': self.error,
+                'ERROR': [self.error,'1'],
                 'ACK': [self.ack,date,user,payload]
             }
             method[header][0](*(method[header][1:]))
@@ -40,7 +40,7 @@ class Client:
         retry = 0
         while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
             self.sock.sendto(msg, self.service)
-            time.sleep(1)
+            time.sleep(0.01)
             retry += 1
         return retry <= 5
 
@@ -74,6 +74,7 @@ class Client:
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             if int(data):
+                self.user = user
                 listen = Thread(target=self.listen)
                 listen.start()
                 keep = Thread(target=self.keep)
@@ -114,5 +115,5 @@ class Client:
     def download(self):
         pass
 
-    def error(self):
+    def error(self,l):
         print('error')
