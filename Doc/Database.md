@@ -2,20 +2,25 @@
 
 ## web_chat
 
-- USERINFO
+- userinfo
 
-  | *USERNAME | VARCHAR(33) | NOT NULL | 用户名                  |
-  | PASSWORD  | VARCHAR(32) | NOT NULL | 密码（使用md5格式村粗） |
-
+  | 字段      | 字段类型    | 可否为空 | 备注                    |
+  | --------- |-------------| -------- | ----------------------- |
+  | username* | varchar(33) | NOT NULL | 用户名                  |
+  | password  | varchar(32) | NOT NULL | 密码（使用md5格式存储） |
 
   
-- GROUPINFO
+- groupinfo
+
+  | group_name* | varchar(33) | NOT NULL | 群聊名               |
+  | ----------- | ----------- | -------- | -------------------- |
+  | manager     | varchar
 
 
 
 - GROUP_CHAT_HISTORY
 
-  | *ID         | INT          | NOT NULL | 标识ID                                   |
+  | ID*         | INT          | NOT NULL | 标识ID                                   |
   | ----------- |--------------| -------- | ---------------------------------------- |
   | SOURCE_USER | VARCHAR(33)  | NOT NULL | 消息源用户（与USERINFO中的USERNAME关联） |
   | TIME        | DATETIME     | NOT NULL | 时间戳                                   |
@@ -25,7 +30,7 @@
 
 - GROUP_FILE_HISTORY
 
-  | *ID         | INT         | NOT NULL | 标识ID                                   |
+  | ID*         | INT         | NOT NULL | 标识ID                                   |
   | ----------- |-------------| -------- | ---------------------------------------- |
   | SOURCE_USER | VARCHAR(33) | NOT NULL | 消息源用户（与USERINFO中的USERNAME关联） |
   | TIME        | DATETIME    | NOT NULL | 时间戳                                   |
@@ -44,7 +49,7 @@
 
 - HISTORY_PRIVATE_CHAT
 
-  | *ID         | INT          | NOT NULL | 标识ID                                 |
+  | ID*         | INT          | NOT NULL | 标识ID                                 |
   | ----------- |--------------| -------- | -------------------------------------- |
   | TARGET_USER | VARCHAR(33)  | NOT NULL | 目标用户（与USERINFO中的USERNAME关联） |
   | SOURCE_USER | VARCHAR(33)  | NOT NULL | 发送用户（与USERINFO中的USERNAME关联） |
