@@ -5,15 +5,14 @@ import hashlib
 
 
 class Client:
-    def __init__(self):
+    def __init__(self,user='none'):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 0))
         # 服务端地址
         self.service = ('127.0.0.1', 10088)
-        self.user = 'none'
+        self.user = user
 
         self.ackpool = []
-        self.online = 0
 
 
     def listen(self):
@@ -24,23 +23,23 @@ class Client:
                 'MESSAGE': [self.message,date,user,payload],
                 'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
-                'ERROR': self.error,
+                'ERROR': [self.error,'1'],
                 'ACK': [self.ack,date,user,payload]
             }
             method[header][0](*(method[header][1:]))
 
     def keep(self):
         while True:
-            date = time.mktime(time.localtime())
-            self.send("ONLINE",date,self.user,'online')
+            self.send("ONLINE",self.user,'online')
             time.sleep(60)
 
-    def send(self,header,date,user,payload):
+    def send(self,header,user,payload):
+        date = time.mktime(time.localtime())
         msg = f"{header}\n\n{date}\n\n{user}\n\n{payload}".encode('utf-8')
         retry = 0
         while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
             self.sock.sendto(msg, self.service)
-            time.sleep(1)
+            time.sleep(0.01)
             retry += 1
         return retry <= 5
 
@@ -69,11 +68,12 @@ class Client:
         msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
         self.sock.sendto(msg,self.service)
         try:
-            self.sock.settimeout(5)
+            self.sock.settimeout(1)
             data, address = self.sock.recvfrom(4096)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             if int(data):
+                self.user = user
                 listen = Thread(target=self.listen)
                 listen.start()
                 keep = Thread(target=self.keep)
@@ -91,7 +91,7 @@ class Client:
         msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
         self.sock.sendto(msg,self.service)
         try:
-            self.sock.settimeout(5)
+            self.sock.settimeout(1)
             data, address = self.sock.recvfrom(4096)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
@@ -101,12 +101,13 @@ class Client:
 
     def chat(self,message):
         header = 'MESSAGE'
-        t = time.localtime()
-        date = time.mktime(t)
         name = self.user
-        flag = self.send(header,date,name,message)
+        flag = self.send(header,name,message)
         return flag
 
+    def get_msg(self,chat_page):
+        header = 'GET'
+        self.send(header,self.user,chat_page)
 
     def upload(self):
         pass
@@ -114,5 +115,5 @@ class Client:
     def download(self):
         pass
 
-    def error(self):
+    def error(self,l):
         print('error')
