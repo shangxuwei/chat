@@ -1,6 +1,9 @@
+import time
 from tkinter import *
 from tkinter import ttk
 import tkinter.messagebox
+from threading import Thread
+import json
 from page import addfriend_page
 
 
@@ -8,7 +11,7 @@ class ChatGui:
     def __init__(self, init_window_name, tools):
         self.tools = tools
 
-        self.chat_model = [0,None] # [is私聊,目标]
+        self.chat_page = [1,"admin"] # [is私聊,目标]
 
         self.init_window_name = init_window_name
 
@@ -71,11 +74,24 @@ class ChatGui:
             print(self.fri_list.selection())
         self.fri_list.bind("<Double-Button-1>", mouse_clicked)
 
-    def message(self):
-        pass
+        def entry(event):
+            self.send()
+            return 'break'
+        self.input_Text.bind("<Return>", entry)
+
+
+        msg = Thread(target=self.get_msg)
+        msg.start()
+
+
+    def get_msg(self):
+        while True:
+            time.sleep(10)
+            self.tools.get_msg(json.dumps(self.chat_page))
 
     def send(self):
-        msg = str(self.chat_model) + '\n' + self.input_Text.get('1.0','end')[:-1]
+        # chat_model标识了群聊和私聊以及对应目标
+        msg = json.dumps(self.chat_page) + '\n' + self.input_Text.get('1.0','end')[:-1]
         flag = self.tools.chat(msg)
         if not flag:
             tkinter.messagebox.showerror('Error', '连接服务器超时请重试')
