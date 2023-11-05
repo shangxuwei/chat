@@ -38,10 +38,10 @@ DBS = {
     'file_public':{
         'id': 'int AUTO_INCREMENT NOT NULL',
         'filename': 'varchar(50) NOT NULL',
-        'file_hash': 'varchar(32) NOT NULL',
+        'file_md5': 'varchar(32) NOT NULL',
         'downloadable_user': 'varchar(33) NOT NULL',
         'KEY': ['id'],
-        'FOREIGN': 'FOREIGN KEY (file_hash) REFERENCES file(md5),'
+        'FOREIGN': 'FOREIGN KEY (file_md5) REFERENCES file(md5),'
                    'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username)'
     },
     'friends':{
@@ -100,7 +100,7 @@ class SQL_Operate:
                         sql += f',{DBS[table][field]}'
             sql += ');'
             self.cur.execute(sql)
-            print(sql)
+            print(f'初始化{table}表')
         print("初始化完成")
 
     def login_check(self,user,pwd):
@@ -128,9 +128,18 @@ class SQL_Operate:
         if model:
             sql_select = (f'INSERT INTO private_chat_history (target_user, source_user, time, content)'
                           f' VALUES ("{target}","{usr}","{date}","{msg}")')
-
         else:
             sql_select = (f'INSERT INTO group_chat_history (target_group, source_user, time, content)'
                           f' VALUES ("{target}","{usr}","{date}","{msg}")')
         self.cur.execute(sql_select)
         self.conn.commit()
+
+    def get_msg(self,model,user,target):
+        if model:
+            sql_select = (f'SELECT * FROM private_chat_history where (target_user="{target}" and source_user="{user}")'
+                          f'or (target_user="{user}" and source_user="{target}")')
+        else:
+            sql_select = f'SELECT * FROM group_chat_history where target_group={target}'
+        self.cur.execute(sql_select)
+        msgs = self.cur.fetchall()
+        return msgs
