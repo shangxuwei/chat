@@ -13,7 +13,6 @@ class Client:
         self.user = user
 
         self.ackpool = []
-        self.online = 0
 
 
     def listen(self):
@@ -31,11 +30,11 @@ class Client:
 
     def keep(self):
         while True:
-            date = time.mktime(time.localtime())
-            self.send("ONLINE",date,self.user,'online')
+            self.send("ONLINE",self.user,'online')
             time.sleep(60)
 
-    def send(self,header,date,user,payload):
+    def send(self,header,user,payload):
+        date = time.mktime(time.localtime())
         msg = f"{header}\n\n{date}\n\n{user}\n\n{payload}".encode('utf-8')
         retry = 0
         while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
@@ -102,12 +101,13 @@ class Client:
 
     def chat(self,message):
         header = 'MESSAGE'
-        t = time.localtime()
-        date = time.mktime(t)
         name = self.user
-        flag = self.send(header,date,name,message)
+        flag = self.send(header,name,message)
         return flag
 
+    def get_msg(self,chat_page):
+        header = 'GET'
+        self.send(header,self.user,chat_page)
 
     def upload(self):
         pass
