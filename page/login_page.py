@@ -7,8 +7,8 @@ class LoginGui(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.var_usr_name = tk.StringVar()
-        self.var_usr_pwd = tk.StringVar()
+        self.user = tk.StringVar()
+        self.pwd = tk.StringVar()
         self.btn_login = ttk.Button()
         self.btn_sign_up = tk.Button()
         self.run()
@@ -22,8 +22,8 @@ class LoginGui(tk.Tk):
         ttk.Label(self, text='Password:').place(x=10, y=90)
 
 
-        ttk.Entry(self, textvariable=self.var_usr_name).place(x=120, y=55)
-        ttk.Entry(self, textvariable=self.var_usr_pwd, show='*').place(x=120, y=95)
+        ttk.Entry(self, textvariable=self.usr).place(x=120, y=55)
+        ttk.Entry(self, textvariable=self.usr, show='*').place(x=120, y=95)
 
 
         self.btn_login = tk.Button(self, text='Login', font=('Arial', 14), command=self.usr_login)
@@ -32,15 +32,10 @@ class LoginGui(tk.Tk):
         self.btn_sign_up.place(x=200, y=200)
 
     #用户登录
-    def usr_login(self):
-        # 这两行代码就是获取用户输入的usr_name和usr_pwd
-        usr_name = self.var_usr_name.get()
-        usr_pwd = self.var_usr_pwd.get()
-        flag = self.tools.login(usr_name, usr_pwd)
-
+    def login_back(self,flag):
         if flag == 1:
             tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + usr_name)
-            self.switch(self.init_window_name,self.tools)
+            self.destroy()
         elif flag == 0:
             tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
         elif flag == 2:
