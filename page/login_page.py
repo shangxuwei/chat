@@ -1,42 +1,36 @@
 import tkinter as tk
+from tkinter import ttk
 import tkinter.messagebox
 
-from page import chat_page
-from method.local import client
 
-
-class LoginGui:
-    def __init__(self, init_window_name):
-        # 初始化页面配置
-        self.tools = client.Client()
-
-        # 页面控件定义
-        self.init_window_name = init_window_name
-        self.init_window_name.title("chat")  # 窗口名
-        self.init_window_name.geometry('400x300')
-
-        tk.Label(self.init_window_name, text='User name:', font=('Arial', 14)).place(x=10, y=50)
-        tk.Label(self.init_window_name, text='Password:', font=('Arial', 14)).place(x=10, y=90)
+class LoginGui(tk.Tk):
+    def __init__(self):
+        super().__init__()
 
         self.var_usr_name = tk.StringVar()
-        self.entry_usr_name = tk.Entry(self.init_window_name, textvariable=self.var_usr_name, font=('Arial', 14))
-        self.entry_usr_name.place(x=120, y=55)
-
         self.var_usr_pwd = tk.StringVar()
-        self.entry_usr_pwd = tk.Entry(self.init_window_name, textvariable=self.var_usr_pwd, font=('Arial', 14), show='*')
-        self.entry_usr_pwd.place(x=120, y=95)
+        self.btn_login = ttk.Button()
+        self.btn_sign_up = tk.Button()
+        self.run()
 
-        self.btn_login = tk.Button(self.init_window_name, text='Login', command=self.usr_login)
+    def run(self):
+        self.title("chat")  # 窗口名
+        self.geometry('400x300')
+        self.resizable(width=False,height=False)
+
+        ttk.Label(self, text='Username:').place(x=10, y=50)
+        ttk.Label(self, text='Password:').place(x=10, y=90)
+
+
+        ttk.Entry(self, textvariable=self.var_usr_name).place(x=120, y=55)
+        ttk.Entry(self, textvariable=self.var_usr_pwd, show='*').place(x=120, y=95)
+
+
+        self.btn_login = tk.Button(self, text='Login', font=('Arial', 14), command=self.usr_login)
         self.btn_login.place(x=100, y=200)
-        self.btn_sign_up = tk.Button(self.init_window_name, text='Sign up', command=self.usr_sign_up)
+        self.btn_sign_up = tk.Button(self, text='Sign up', font=('Arial', 14), command=self.usr_sign_up)
         self.btn_sign_up.place(x=200, y=200)
 
-    def switch(self,oldwin,tools):
-        oldwin.destroy()
-        init_window = tk.Tk()
-        init_window.resizable(width=False,height=False)
-        chat_page.ChatGui(init_window,tools)
-        init_window.mainloop()
     #用户登录
     def usr_login(self):
         # 这两行代码就是获取用户输入的usr_name和usr_pwd
@@ -81,7 +75,7 @@ class LoginGui:
                     tkinter.messagebox.showerror('Error', '连接服务器超时请重试')
 
         # 定义长在窗口上的窗口
-        window_sign_up = tk.Toplevel(self.init_window_name)
+        window_sign_up = tk.Toplevel(self)
         window_sign_up.wm_attributes('-topmost', 1)
         window_sign_up.resizable(width=False, height=False)
         window_sign_up.geometry('300x200')

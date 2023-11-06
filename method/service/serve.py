@@ -1,7 +1,6 @@
 import socket
 import trace
 import traceback
-
 import SQLTools
 import json
 import logging
@@ -41,8 +40,10 @@ class Service:
                 traceback.print_exc()
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
-    def online(self,address,name):
-            self.ip_pool[name]=address
+    def online(self,address:tuple ,name:str) -> None:
+        if name in self.ip_pool and self.ip_pool[name] !=  address:
+            self.sock.sendto('LOGOUT\n\n\n\n\n\n')
+        self.ip_pool[name]=address
 
     def login(self,address,user,payload):
         flag = self.SQL_obj.login_check(user,payload)

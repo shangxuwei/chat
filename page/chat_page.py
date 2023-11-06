@@ -49,7 +49,7 @@ class ChatGui:
 
 
         # 添加好友
-        self.into_fri_btn = Button(self.init_window_name, text="添加好友",command=lambda :self.switch(self.init_window_name))
+        self.into_fri_btn = Button(self.init_window_name, text="添加好友",command=lambda :self.switch(addfriend_page.AddGui))
         self.into_fri_btn.place(x=990, y=2)
 
         # 创建树形列表
@@ -68,7 +68,6 @@ class ChatGui:
         self.fri_tree3 = self.fri_list.insert('', 2, 'third', text='群聊', )
         self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
         self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
-
         def mouse_clicked(event):
             # TODO:唤起好友聊天页
             print(self.fri_list.selection())
@@ -79,13 +78,13 @@ class ChatGui:
             return 'break'
         self.input_Text.bind("<Return>", entry)
 
-
-        msg = Thread(target=self.get_msg)
-        msg.start()
-
+    def online(self):
+        while self.tools.online:
+            continue
+        tkinter.messagebox.showerror('Error','用户在别处登录')
 
     def get_msg(self):
-        while True:
+        while self.tools.online:
             time.sleep(10)
             self.tools.get_msg(json.dumps(self.chat_page))
 
@@ -98,8 +97,8 @@ class ChatGui:
         else:
             self.input_Text.delete('1.0','end')
 
-    def switch(self, oldwin):
+    def switch(self, newwin):
         init_window = Tk()
         init_window.resizable(width=False, height=False)
-        addfriend_page.AddGui(init_window)
+        newwin(init_window)
         init_window.mainloop()

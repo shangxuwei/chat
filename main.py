@@ -1,7 +1,7 @@
-from page import login_page
+from method.local import client
+from page import login_page,addfriend_page,register_page
 import tkinter as tk
 if __name__ == "__main__":
-    init_window = tk.Tk()
-    init_window.resizable(width=False,height=False)
-    login_portal = login_page.LoginGui(init_window)
-    init_window.mainloop()
+    tools = client.Client()
+    page_login = login_page.LoginGui()
+    page_login.btn_login.configure(command=lambda :tools.login())
