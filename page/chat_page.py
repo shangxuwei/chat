@@ -15,12 +15,14 @@ class ChatGui(tk.Tk):
         self.btn_send = tk.Button()
         self.btn_face = tk.Button()
         self.btn_file = tk.Button()
-        self.fri_list = ttk.Treeview()
+        self.btn_addfri = tk.Button
+        self.chat_list = ttk.Treeview()
+        self.fri_list = ''
+        self.group_list = ''
         self.run()
 
     def run(self):
-        self.init_window_name.title("chat")  # 窗口名
-        screenWidth
+        self.title("chat")  # 窗口名
         screenWidth = self.winfo_screenwidth()
         screenHeight = self.winfo_screenheight()
         width = 1080
@@ -30,11 +32,13 @@ class ChatGui(tk.Tk):
         self.geometry("%dx%d+%d+%d" % (width, height, left, top))
         self.resizable(width=False, height=False)
 
-        tk.Label(self.init_window_name, text="聊天记录").place(x=0, y=0)
-        tk.Label(self.init_window_name, text="输入").place(x=0, y=435)
+        tk.Label(self, text="聊天记录").place(x=0, y=0)
+        tk.Label(self, text="输入").place(x=0, y=435)
 
-        s3 = tk.Scrollbar(self).place(x=775, y=20, height=320)
-        self.msg = tk.Text(self, width=110, height=23).place(x=0, y=30)
+        s3 = (tk.Scrollbar(self))
+        s3.place(x=775, y=20, height=320)
+        self.msg = (tk.Text(self, width=110, height=23))
+        self.msg.place(x=0, y=30)
         self.msg.configure(state='disabled') #只读不写
         s3.config(command=self.msg.yview)
 
@@ -47,7 +51,7 @@ class ChatGui(tk.Tk):
         self.btn_face = tk.Button(self, text="表情包", width=10)
         self.btn_face.place(x=440,y=435)
 
-        self.btn_file = tk.Button(self.init_window_name, text="文件", width=10)
+        self.btn_file = tk.Button(self, text="文件", width=10)
         self.btn_file.place(x=620,y=435)
 
         # 添加好友
@@ -55,18 +59,18 @@ class ChatGui(tk.Tk):
         self.btn_addfri.place(x=990, y=2)
 
         # 创建树形列表
-        s2 = Scrollbar(self)
+        s2 = tk.Scrollbar(self)
         s2.place(x=1055,y=30,height=550)
-        self.fri_list = ttk.Treeview(self.init_window_name, height=27, show="tree", yscrollcommand=s2.set)
-        self.fri_list.place(x=850, y=30)
-        s2.config(command=self.fri_list.yview)
+        self.chat_list = ttk.Treeview(self, height=27, show="tree", yscrollcommand=s2.set)
+        self.chat_list.place(x=850, y=30)
+        s2.config(command=self.chat_list.yview)
         # 好友分组
-        self.fri_tree2 = self.fri_list.insert('', 1, 'second', text='好友', )
-        self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
-        self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
-        self.fri_tree3 = self.fri_list.insert('', 2, 'third', text='群聊', )
-        self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
-        self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
+        self.fri_list = self.chat_list.insert('', 1, 'second', text='好友', )
+        # self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
+        # self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
+        self.group_list = self.chat_list.insert('', 2, 'third', text='群聊', )
+        # self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
+        # self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
 
         """bind key
         self.fri_list.bind("<Double-Button-1>", mouse_clicked)
@@ -79,28 +83,32 @@ class ChatGui(tk.Tk):
             return 'break'
         self.input_Text.bind("<Return>", entry)
         """
-    @staticmethod
-    def logout():
-        tkinter.messagebox.showerror('Error','用户在别处登录')
+    def get_msg(self,date,user,message):
+        string = f'{date}[{user}]: {message}'
+        self.msg.insert(tk.INSERT,"string")
+
+    def get_fri(self,friends,groups):
+        for _ in friends:
+            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
+        for _ in groups:
+            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
+
+    def clear(self):
+        self.msg.configure(state='normal')
+        self.msg.delete('1.0', 'end')
+        self.msg.configure(state='disabled')
+
+    def send_msg(self):
+        # chat_model标识了群聊和私聊以及对应目标
+        msg = json.dumps(self.chat_page) + '\n' + self.input_Text.get('1.0','end')[:-1]
+        self.input_Text.delete('1.0','end')
+        return msg
 
     @staticmethod
     def time_out():
         tkinter.messagebox.showerror('Error','连接服务器超时')
 
-    def get_msg(self,date,user,message):
-        string = f'{date}[{user}]: {message}'
-        self.msg.insert(string)
+    @staticmethod
+    def logout():
+        tkinter.messagebox.showerror('Error','用户在别处登录')
 
-    def get_fri():
-        pass
-
-    def clear(self):
-        self.msg.configure(state='normal')
-        self.msg.delete('1.0', 'end')
-        self.msg.configure(state='disable')
-
-    def send(self):
-        # chat_model标识了群聊和私聊以及对应目标
-        msg = json.dumps(self.chat_page) + '\n' + self.input_Text.get('1.0','end')[:-1]
-        self.input_Text.delete('1.0','end')
-        return msg

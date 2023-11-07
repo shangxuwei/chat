@@ -42,7 +42,7 @@ class Service:
 
     def online(self,address:tuple ,name:str) -> None:
         if name in self.ip_pool and self.ip_pool[name] !=  address:
-            self.sock.sendto('LOGOUT\n\n\n\n\n\n')
+            self.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),self.ip_pool[name])
         self.ip_pool[name]=address
 
     def login(self,address,user,payload):

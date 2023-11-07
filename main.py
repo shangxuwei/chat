@@ -1,6 +1,6 @@
 from method.local import client
 from page import login_page,register_page,chat_page
-import tkinter as tk
+
 
 def run_login():
     page_login = login_page.LoginGui()
@@ -10,6 +10,7 @@ def run_login():
             page_login.pwd_error()
         elif flag == 1:
             page_login.succeed()
+            run_chat()
         elif flag == 2:
             page_login.time_out()
     def sign_up():
@@ -45,8 +46,8 @@ def run_register():
 
 def run_chat():
     print(111)
-    # page_chat = chat_page.ChatGui()
-    # page_chat.
+    page_chat = chat_page.ChatGui()
+    page_chat.mainloop()
 if __name__ == "__main__":
     tools = client.Client()
     run_login()

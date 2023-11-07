@@ -37,15 +37,14 @@ class LoginGui(tk.Tk):
         self.btn_sign_up = tk.Button(self, text='Sign up', font=('Arial', 16))
         self.btn_sign_up.place(x=200, y=200)
 
-    @staticmethod
-    def succeed(self)
+    def succeed(self):
         tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + self.user.get())
         self.destroy()
     
     @staticmethod
-    def pwd_error()
+    def pwd_error():
         tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
     
     @staticmethod
-    def time_out()
+    def time_out():
         tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
