@@ -99,7 +99,7 @@ class Client:
         self.ackpool.remove(flag)
         return True
 
-    def register(self,user,password):
+    def register(self,user: str,password: str) -> int:
         header = 'REGISTER'
         date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
@@ -135,32 +135,3 @@ class Client:
     def error(self,l):
         print('error')
 
-
-if __name__ =='__main__':
-    page_login = login_page.LoginGui()
-    window_sign_up = tk.Toplevel(page_login)
-    window_sign_up.wm_attributes('-topmost', 1)
-    window_sign_up.resizable(width=False, height=False)
-    window_sign_up.geometry('300x200')
-    window_sign_up.title('Sign up window')
-
-    new_name = tk.StringVar()  # 将输入的注册名赋值给变量
-    tk.Label(window_sign_up, text='User name: ').place(x=10, y=10)  # 将`User name:`放置在坐标（10,10）。
-    entry_new_name = tk.Entry(window_sign_up, textvariable=new_name)  # 创建一个注册名的`entry`，变量为`new_name`
-    entry_new_name.place(x=130, y=10)  # `entry`放置在坐标（150,10）.
-
-    new_pwd = tk.StringVar()
-    tk.Label(window_sign_up, text='Password: ').place(x=10, y=50)
-    entry_usr_pwd = tk.Entry(window_sign_up, textvariable=new_pwd, show='*')
-    entry_usr_pwd.place(x=130, y=50)
-
-    new_pwd_confirm = tk.StringVar()
-    tk.Label(window_sign_up, text='Confirm password: ').place(x=10, y=90)
-    entry_usr_pwd_confirm = tk.Entry(window_sign_up, textvariable=new_pwd_confirm, show='*')
-    entry_usr_pwd_confirm.place(x=130, y=90)
-
-    # 下面的 sign_to_chat
-    btn_confirm_sign_up = tk.Button(window_sign_up, text='Sign up')
-    btn_confirm_sign_up.place(x=180, y=120)
-
-    page_login.mainloop()
