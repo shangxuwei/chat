@@ -9,7 +9,7 @@ class LoginGui(tk.Tk):
 
         self.user = tk.StringVar()
         self.pwd = tk.StringVar()
-        self.btn_login = ttk.Button()
+        self.btn_login = tk.Button()
         self.btn_sign_up = tk.Button()
         self.run()
 
@@ -37,12 +37,15 @@ class LoginGui(tk.Tk):
         self.btn_sign_up = tk.Button(self, text='Sign up', font=('Arial', 16))
         self.btn_sign_up.place(x=200, y=200)
 
-    #用户登录
-    def login_back(self,flag):
-        if flag == 1:
-            tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + self.user.get())
-            self.destroy()
-        elif flag == 0:
-            tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
-        elif flag == 2:
-            tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
+    @staticmethod
+    def succeed(self)
+        tkinter.messagebox.showinfo(title='Welcome', message='How are you? ' + self.user.get())
+        self.destroy()
+    
+    @staticmethod
+    def pwd_error()
+        tkinter.messagebox.showerror(message='Error, your password is wrong, try again.')
+    
+    @staticmethod
+    def time_out()
+        tkinter.messagebox.showerror(message='Error, connect timeout, try again.')

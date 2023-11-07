@@ -6,9 +6,12 @@ def run_login():
     page_login = login_page.LoginGui()
     def login():
         flag = tools.login(page_login.user.get(), page_login.pwd.get())
-        page_login.login_back(flag)
-        if flag:
-            run_chat()
+        if flag == 0:
+            page_login.pwd_error()
+        elif flag == 1:
+            page_login.succeed()
+        elif flag == 2:
+            page_login.time_out()
     def sign_up():
         # page_login.wm_attributes('-disable',1)
         run_register()
