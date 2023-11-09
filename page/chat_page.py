@@ -83,11 +83,14 @@ class ChatGui(tk.Tk):
             return 'break'
         self.input_Text.bind("<Return>", entry)
         """
-    def get_msg(self,date,user,message):
-        string = f'{date}[{user}]: {message}'
-        self.msg.insert(tk.INSERT,"string")
 
-    def get_fri(self,friends,groups):
+    def get_msg(self,date: str,user: str,message: str):
+        self.msg.configure(state='normal')
+        string = f'{date}[{user}]: {message}'
+        self.msg.insert(tk.INSERT,string)
+        self.msg.configure(state='disabled')
+
+    def get_fri(self,friends: list,groups: list):
         for _ in friends:
             self.chat_list.insert(self.fri_list,'end',text=_,values=_)
         for _ in groups:

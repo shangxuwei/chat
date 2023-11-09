@@ -1,3 +1,5 @@
+from threading import Thread
+import time
 from method.local import client
 from page import login_page,register_page,chat_page
 
@@ -45,9 +47,14 @@ def run_register():
     page_register.mainloop()
 
 def run_chat():
-    print(111)
     page_chat = chat_page.ChatGui()
+    def msg():
+        time.sleep(5)
+        page_chat.get_msg('1.1','admin','nihao')
+    a = Thread(target=msg)
+    a.start()
     page_chat.mainloop()
+
 if __name__ == "__main__":
     tools = client.Client()
     run_login()

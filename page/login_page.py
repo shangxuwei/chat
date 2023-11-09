@@ -6,7 +6,6 @@ import tkinter.messagebox
 class LoginGui(tk.Tk):
     def __init__(self):
         super().__init__()
-
         self.user = tk.StringVar()
         self.pwd = tk.StringVar()
         self.btn_login = tk.Button()

@@ -18,8 +18,8 @@ class Service:
 
     def listen(self):
         while True:
-            data, address = self.sock.recvfrom(4096)
             try:
+                data, address = self.sock.recvfrom(4096)
                 header, date, user, payload = data.decode('utf-8').split("\n\n", 3)
                 method = {
                     'LOGIN': [self.login, address, user, payload],
@@ -36,13 +36,15 @@ class Service:
                     self.sock.sendto(ack_mag, address)
                     ack_pak = f'{header}{date}{user}'
                     logging.debug(f'ACK to {address}, {header}, {user}, hash:{hash(ack_pak)}')
+            except ConnectionResetError:
+                print(self.ip_pool)
             except:
                 traceback.print_exc()
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
 
     def online(self,address:tuple ,name:str) -> None:
         if name in self.ip_pool and self.ip_pool[name] !=  address:
-            self.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),self.ip_pool[name])
+            self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'),self.ip_pool[name])
         self.ip_pool[name]=address
 
     def login(self,address,user,payload):
