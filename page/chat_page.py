@@ -9,7 +9,6 @@ import json
 class ChatGui(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.chat_page = [1,"admin"] # [is私聊,目标]
         self.input_Text = tk.Text()
         self.msg = tk.Text()
         self.btn_send = tk.Button()
@@ -22,7 +21,6 @@ class ChatGui(tk.Tk):
         self.run()
 
     def run(self):
-        self.title("chat")  # 窗口名
         screenWidth = self.winfo_screenwidth()
         screenHeight = self.winfo_screenheight()
         width = 1080
@@ -37,7 +35,7 @@ class ChatGui(tk.Tk):
 
         s3 = (tk.Scrollbar(self))
         s3.place(x=775, y=20, height=320)
-        self.msg = (tk.Text(self, width=110, height=23))
+        self.msg = tk.Text(self, width=110, height=23)
         self.msg.place(x=0, y=30)
         self.msg.configure(state='disabled') #只读不写
         s3.config(command=self.msg.yview)
@@ -101,9 +99,9 @@ class ChatGui(tk.Tk):
         self.msg.delete('1.0', 'end')
         self.msg.configure(state='disabled')
 
-    def send_msg(self):
+    def get_text_msg(self):
         # chat_model标识了群聊和私聊以及对应目标
-        msg = json.dumps(self.chat_page) + '\n' + self.input_Text.get('1.0','end')[:-1]
+        msg = self.input_Text.get('1.0','end')[:-1]
         self.input_Text.delete('1.0','end')
         return msg
 

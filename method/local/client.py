@@ -2,7 +2,7 @@ import socket
 import time
 from threading import Thread
 import tkinter as tk
-from page import login_page,chat_page,addfriend_page
+import json
 from typing import *
 import hashlib
 
@@ -17,6 +17,9 @@ class Client:
         self.ackpool = []
 
         self.online = 0
+
+        self.messagebox = None
+        self.chat_page = [1,'admin']
 
     @staticmethod
     def swatch_page(new_page=None,close_page: tk.Tk=None):
@@ -69,35 +72,39 @@ class Client:
     def message(self,date,user,payload):
         t = time.localtime(float(date))
         date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        self.messagebox.configure(state='normal')
+        self.messagebox.insert(tk.INSERT,f'[{date}]{user}: {payload}\n')
+        self.messagebox.configure(state='disabled')
 
-        print(f'[{date}]{user}: {payload}')
-        return f'[{date}]{user}: {payload}'
     def logout(self):
         self.online = 0
 
     def keep(self):
         while True:
-            self.send("ONLINE",self.user,'online')
+            self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header,user,payload):
+    def send(self,header,payload):
         date = time.mktime(time.localtime())
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{payload}".encode('utf-8')
+        msg = f"{header}\n\n{date}\n\n{self.user}\n\n{payload}".encode('utf-8')
         retry = 0
-        while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
+        self.ackpool.append(hash(f'{header}{date}{self.user}'))
+        while self.ack_check(hash(f'{header}{date}{self.user}')) and retry <= 5:
             self.sock.sendto(msg, self.service)
-            time.sleep(0.01)
+            time.sleep(0.05)
             retry += 1
         return retry <= 5
 
     def ack(self, header, date, user):
-        self.ackpool.append(hash(f'{header}{date}{user}'))
+        try:
+            self.ackpool.remove(hash(f'{header}{date}{user}'))
+        except:
+            pass
 
     def ack_check(self, flag):
-        if flag not in self.ackpool:
-            return False
-        self.ackpool.remove(flag)
-        return True
+        if flag in self.ackpool:
+            return True
+        return False
 
     def register(self,user: str,password: str) -> int:
         header = 'REGISTER'
@@ -118,16 +125,16 @@ class Client:
 
     def chat(self,message):
         header = 'MESSAGE'
-        name = self.user
-        flag = self.send(header,name,message)
+        message = json.dumps(self.chat_page) + '\n' + message
+        flag = self.send(header,message)
         return flag
 
     def get_msg(self,chat_page):
         header = 'GET'
-        self.send(header,self.user,chat_page)
+        self.send(header,chat_page)
 
     def upload(self):
-        page
+        pass
 
     def download(self):
         pass

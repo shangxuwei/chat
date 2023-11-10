@@ -1,5 +1,6 @@
 import socket
 import trace
+import time
 import traceback
 import SQLTools
 import json
@@ -21,6 +22,11 @@ class Service:
             try:
                 data, address = self.sock.recvfrom(4096)
                 header, date, user, payload = data.decode('utf-8').split("\n\n", 3)
+                if header not in ['LOGIN',"REGISTER"]:
+                    ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
+                    self.sock.sendto(ack_mag, address)
+                    ack_pak = f'{header}{date}{user}'
+                    logging.debug(f'ACK to {address}, {header}{date}{user}, hash:{hash(ack_pak)}')
                 method = {
                     'LOGIN': [self.login, address, user, payload],
                     'REGISTER': [self.register, address, user, payload],
@@ -31,11 +37,6 @@ class Service:
                     'ONLINE': [self.online, address, user]
                 }
                 method[header][0](*(method[header][1:]))
-                if header not in ['LOGIN',"REGISTER"]:
-                    ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
-                    self.sock.sendto(ack_mag, address)
-                    ack_pak = f'{header}{date}{user}'
-                    logging.debug(f'ACK to {address}, {header}, {user}, hash:{hash(ack_pak)}')
             except ConnectionResetError:
                 print(self.ip_pool)
             except:
@@ -58,11 +59,13 @@ class Service:
         self.sock.sendto(str(flag).encode("utf-8"), address)
         logging.info(f"address:{address} user:{user} res:{flag}")
 
-    def message(self, date, name, payload):
+    def message(self, date: str, user, payload):
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         model = int(target[0]) # is私聊
-        self.SQL_obj.save_msg(date,name,model,target[1],msg)
+        if model and target[1] in self.ip_pool:
+            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'),self.ip_pool[target[1]])
+        self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
     def get_msg(self,user,payload):
         target = json.loads(payload)

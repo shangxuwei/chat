@@ -48,11 +48,19 @@ def run_register():
 
 def run_chat():
     page_chat = chat_page.ChatGui()
-    def msg():
-        time.sleep(5)
-        page_chat.get_msg('1.1','admin','nihao')
-    a = Thread(target=msg)
-    a.start()
+    page_chat.title(f'chat : {tools.user}')
+    tools.messagebox = page_chat.msg
+    def entry(event):
+        send_msg()
+        return 'break'
+    page_chat.input_Text.bind("<Return>", entry)
+
+    def send_msg():
+        tools.chat(page_chat.get_text_msg())
+        return 'break'
+    page_chat.btn_send.configure(command=send_msg)
+
+
     page_chat.mainloop()
 
 if __name__ == "__main__":
