@@ -19,7 +19,11 @@ class Client:
         self.online = 0
 
         self.messagebox = None
-        self.chat_page = [1,'admin']
+        self.chat_list = None
+        self.fir_list = ''
+        self.group_list = ''
+
+        self.chat_page = [0,'public']
 
     @staticmethod
     def swatch_page(new_page=None,close_page: tk.Tk=None):
@@ -48,9 +52,28 @@ class Client:
                 self.online = 1
                 self.user = user
                 listen = Thread(target=self.listen)
+                listen.daemon = True
                 listen.start()
                 keep = Thread(target=self.keep)
+                keep.daemon = True
                 keep.start()
+            return int(data)
+        except:
+            return 2
+
+    def register(self,user: str,password: str) -> int:
+        header = 'REGISTER'
+        date = time.mktime(time.localtime())
+        md5_object = hashlib.md5()
+        md5_object.update(password.encode('utf-8'))
+        md5_result = md5_object.hexdigest()
+        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
+        self.sock.sendto(msg,self.service)
+        try:
+            self.sock.settimeout(1)
+            data, address = self.sock.recvfrom(4096)
+            self.sock.settimeout(None)
+            data = data.decode("utf-8")
             return int(data)
         except:
             return 2
@@ -65,13 +88,14 @@ class Client:
                 'DOWNLOAD': self.download,
                 'ERROR': [self.error,None],
                 'LOGOUT':[self.logout],
-                'ACK': [self.ack,date,user,payload]
+                'ACK': [self.ack,date,user,payload],
+                'CHAT_LIST':[self.update_chat_list,payload]
             }
             method[header][0](*(method[header][1:]))
 
     def message(self,date,user,payload):
         t = time.localtime(float(date))
-        date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        date = f'{t.tm_year}/{t.tm_mon}/{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         self.messagebox.configure(state='normal')
         self.messagebox.insert(tk.INSERT,f'[{date}]{user}: {payload}\n')
         self.messagebox.configure(state='disabled')
@@ -106,23 +130,6 @@ class Client:
             return True
         return False
 
-    def register(self,user: str,password: str) -> int:
-        header = 'REGISTER'
-        date = time.mktime(time.localtime())
-        md5_object = hashlib.md5()
-        md5_object.update(password.encode('utf-8'))
-        md5_result = md5_object.hexdigest()
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
-        self.sock.sendto(msg,self.service)
-        try:
-            self.sock.settimeout(1)
-            data, address = self.sock.recvfrom(4096)
-            self.sock.settimeout(None)
-            data = data.decode("utf-8")
-            return int(data)
-        except:
-            return 2
-
     def chat(self,message):
         header = 'MESSAGE'
         message = json.dumps(self.chat_page) + '\n' + message
@@ -133,12 +140,24 @@ class Client:
         header = 'GET'
         self.send(header,chat_page)
 
+    def get_chat_list(self):
+        header = 'GET_CHATS'
+        self.send(header,' ')
+
+    def update_chat_list(self,payload):
+        friends = json.loads(payload)[0]
+        groups = json.loads(payload)[1]
+        for _ in friends:
+            self.chat_list.insert(self.fir_list, index='end', iid=[1,_], text=_)
+        for _ in groups:
+            self.chat_list.insert(self.group_list, index='end', iid=[0,_], text=_)
+
     def upload(self):
         pass
 
     def download(self):
         pass
 
-    def error(self,l):
+    def error(self):
         print('error')
 

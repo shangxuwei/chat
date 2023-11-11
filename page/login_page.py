@@ -14,6 +14,7 @@ class LoginGui(tk.Tk):
 
     def run(self):
         self.title("chat")  # 窗口名
+        self.wm_attributes('-topmost', 0)
         screenWidth = self.winfo_screenwidth()  # 获取显示区域的宽度
         screenHeight = self.winfo_screenheight()  # 获取显示区域的高度
         width = 400  # 设定窗口宽度

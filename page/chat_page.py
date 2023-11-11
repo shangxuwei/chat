@@ -16,6 +16,8 @@ class ChatGui(tk.Tk):
         self.btn_file = tk.Button()
         self.btn_addfri = tk.Button
         self.chat_list = ttk.Treeview()
+        self.chat_page = tk.StringVar()
+        self.chat_page.set('public')
         self.fri_list = ''
         self.group_list = ''
         self.run()
@@ -30,7 +32,7 @@ class ChatGui(tk.Tk):
         self.geometry("%dx%d+%d+%d" % (width, height, left, top))
         self.resizable(width=False, height=False)
 
-        tk.Label(self, text="聊天记录").place(x=0, y=0)
+        tk.Label(self, textvariable=self.chat_page).place(x=0, y=0)
         tk.Label(self, text="输入").place(x=0, y=435)
 
         s3 = (tk.Scrollbar(self))

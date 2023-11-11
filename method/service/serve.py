@@ -31,10 +31,11 @@ class Service:
                     'LOGIN': [self.login, address, user, payload],
                     'REGISTER': [self.register, address, user, payload],
                     'MESSAGE': [self.message, date, user, payload],
-                    'GET': [self.get_msg,user,payload],
+                    'GET_FILE': [self.get_msg,user,payload],
                     'UPLOAD': self.upload,
                     'DOWNLOAD': self.download,
-                    'ONLINE': [self.online, address, user]
+                    'ONLINE': [self.online, address, user],
+                    'GET_CHATS':[self.get_chats,address,user]
                 }
                 method[header][0](*(method[header][1:]))
             except ConnectionResetError:
@@ -63,6 +64,7 @@ class Service:
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         model = int(target[0]) # is私聊
+        self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'), self.ip_pool[user])
         if model and target[1] in self.ip_pool:
             self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'),self.ip_pool[target[1]])
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
@@ -72,6 +74,11 @@ class Service:
         model = int(target[0])
         msgs = self.SQL_obj.get_msg(model,user,target[1])
         print(msgs)
+
+    def get_chats(self,address,user):
+        chat_list = self.SQL_obj.get_chat_list(user)
+        payload = f'CHAT_LIST\n\n \n\n \n\n{json.dumps(chat_list)}'
+        self.sock.sendto(payload.encode('utf-8'),address)
 
     def upload(self):
         pass

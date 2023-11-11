@@ -26,9 +26,9 @@ def run_login():
 def run_register():
     page_register = register_page.RegisterGui()
     def register():
-        usr = page_register.new_name.get()
-        pwd = page_register.new_pwd.get()
-        confirm = page_register.new_pwd_confirm.get()
+        usr = page_register.user.get()
+        pwd = page_register.pwd.get()
+        confirm = page_register.pwd_confirm.get()
         if len(usr) >= 10:
             page_register.user_too_long()
         elif pwd != confirm:
@@ -39,7 +39,6 @@ def run_register():
                 page_register.user_exist()
             elif flag == 1:
                 page_register.succeed()
-                run_chat()
             elif flag == 2:
                 page_register.time_out()
 
@@ -49,11 +48,24 @@ def run_register():
 def run_chat():
     page_chat = chat_page.ChatGui()
     page_chat.title(f'chat : {tools.user}')
+    tools.chat_list = page_chat.chat_list
+    tools.fir_list = page_chat.fri_list
+    tools.group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
+    tools.get_chat_list()
     def entry(event):
         send_msg()
         return 'break'
     page_chat.input_Text.bind("<Return>", entry)
+
+    def mouse_clicked(event):
+        model, target = page_chat.chat_list.selection()[0].split(' ', 1)
+        tools.chat_page = [int(model),target]
+        page_chat.chat_page.set(target)
+        page_chat.msg.configure(state='normal')
+        page_chat.msg.delete('1.0','end')
+        page_chat.msg.configure(state='disabled')
+    page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
         tools.chat(page_chat.get_text_msg())
