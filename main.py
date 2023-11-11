@@ -62,9 +62,7 @@ def run_chat():
         model, target = page_chat.chat_list.selection()[0].split(' ', 1)
         tools.chat_page = [int(model),target]
         page_chat.chat_page.set(target)
-        page_chat.msg.configure(state='normal')
-        page_chat.msg.delete('1.0','end')
-        page_chat.msg.configure(state='disabled')
+        page_chat.clear()
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():

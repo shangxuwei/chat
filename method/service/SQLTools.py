@@ -172,3 +172,9 @@ class SQL_Operate:
         self.cur.execute(sql_select)
         groups = [_[0] for _ in self.cur.fetchall()]
         return friends,groups
+
+    def get_group_members(self,group):
+        sql_select = f'SELECT group_member FROM group_members where group_name="{group}"'
+        self.cur.execute(sql_select)
+        members = [_[0] for _ in self.cur.fetchall()]
+        return members

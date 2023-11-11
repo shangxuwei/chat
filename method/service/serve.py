@@ -64,9 +64,15 @@ class Service:
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         model = int(target[0]) # is私聊
-        self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'), self.ip_pool[user])
-        if model and target[1] in self.ip_pool:
-            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'),self.ip_pool[target[1]])
+
+        if model:
+            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'), self.ip_pool[user])
+            if target[1] in self.ip_pool:
+                self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'),self.ip_pool[target[1]])
+        else:
+            for member in self.SQL_obj.get_group_members(target[1]):
+                if member in self.ip_pool:
+                    self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{msg}'.encode('utf-8'), self.ip_pool[member])
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
     def get_msg(self,user,payload):
@@ -88,4 +94,5 @@ class Service:
 
 if __name__ == "__main__":
     service = Service()
+    print(service.SQL_obj.get_group_members('public'))
     service.listen()
