@@ -1,11 +1,13 @@
 import socket
 import time
 from threading import Thread
+import tkinter as tk
+import json
+from typing import *
 import hashlib
 
-
 class Client:
-    def __init__(self,user='none'):
+    def __init__(self,user=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 0))
         # 服务端地址
@@ -14,50 +16,24 @@ class Client:
 
         self.ackpool = []
 
+        self.online = 0
 
-    def listen(self):
-        while True:
-            data, address = self.sock.recvfrom(4096)
-            header,date,user,payload = data.decode('utf-8').split('\n\n',3)
-            method = {
-                'MESSAGE': [self.message,date,user,payload],
-                'UPLOAD': self.upload,
-                'DOWNLOAD': self.download,
-                'ERROR': [self.error,'1'],
-                'ACK': [self.ack,date,user,payload]
-            }
-            method[header][0](*(method[header][1:]))
+        self.messagebox = None
+        self.chat_list = None
+        self.fir_list = ''
+        self.group_list = ''
 
-    def keep(self):
-        while True:
-            self.send("ONLINE",self.user,'online')
-            time.sleep(60)
+        self.chat_page = [0,'public']
 
-    def send(self,header,user,payload):
-        date = time.mktime(time.localtime())
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{payload}".encode('utf-8')
-        retry = 0
-        while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
-            self.sock.sendto(msg, self.service)
-            time.sleep(0.01)
-            retry += 1
-        return retry <= 5
-
-    def ack(self, header, date, user):
-        self.ackpool.append(hash(f'{header}{date}{user}'))
-
-    def ack_check(self, flag):
-        if flag not in self.ackpool:
-            return False
-        self.ackpool.remove(flag)
-        return True
-
-    def message(self,date,user,payload):
-        t = time.localtime(float(date))
-        date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-
-        print(f'[{date}]{user}: {payload}')
-        return f'[{date}]{user}: {payload}'
+    @staticmethod
+    def swatch_page(new_page=None,close_page: tk.Tk=None):
+        if close_page is not None:
+            close_page.destroy()
+        if new_page is not None:
+            init_window = tk.Tk()
+            init_window.resizable(width=False,height=False)
+            new_page(init_window)
+            init_window.mainloop()
 
     def login(self,user,password):
         header = 'LOGIN'
@@ -73,16 +49,19 @@ class Client:
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             if int(data):
+                self.online = 1
                 self.user = user
                 listen = Thread(target=self.listen)
+                listen.daemon = True
                 listen.start()
                 keep = Thread(target=self.keep)
+                keep.daemon = True
                 keep.start()
             return int(data)
         except:
             return 2
 
-    def register(self,user,password):
+    def register(self,user: str,password: str) -> int:
         header = 'REGISTER'
         date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
@@ -99,15 +78,79 @@ class Client:
         except:
             return 2
 
+    def listen(self):
+        while True:
+            data, address = self.sock.recvfrom(4096)
+            header,date,user,payload = data.decode('utf-8').split('\n\n',3)
+            method = {
+                'MESSAGE': [self.message,date,user,payload],
+                'UPLOAD': self.upload,
+                'DOWNLOAD': self.download,
+                'ERROR': [self.error,None],
+                'LOGOUT':[self.logout],
+                'ACK': [self.ack,date,user,payload],
+                'CHAT_LIST':[self.update_chat_list,payload]
+            }
+            method[header][0](*(method[header][1:]))
+
+    def message(self,date,user,payload):
+        t = time.localtime(float(date))
+        date = f'{t.tm_year}/{t.tm_mon}/{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        self.messagebox.configure(state='normal')
+        self.messagebox.insert(tk.INSERT,f'[{date}]{user}: {payload}\n')
+        self.messagebox.configure(state='disabled')
+
+    def logout(self):
+        self.online = 0
+
+    def keep(self):
+        while True:
+            self.send("ONLINE",'online')
+            time.sleep(60)
+
+    def send(self,header,payload):
+        date = time.mktime(time.localtime())
+        msg = f"{header}\n\n{date}\n\n{self.user}\n\n{payload}".encode('utf-8')
+        retry = 0
+        self.ackpool.append(hash(f'{header}{date}{self.user}'))
+        while self.ack_check(hash(f'{header}{date}{self.user}')) and retry <= 5:
+            self.sock.sendto(msg, self.service)
+            time.sleep(0.05)
+            retry += 1
+        return retry <= 5
+
+    def ack(self, header, date, user):
+        try:
+            self.ackpool.remove(hash(f'{header}{date}{user}'))
+        except:
+            pass
+
+    def ack_check(self, flag):
+        if flag in self.ackpool:
+            return True
+        return False
+
     def chat(self,message):
         header = 'MESSAGE'
-        name = self.user
-        flag = self.send(header,name,message)
+        message = json.dumps(self.chat_page) + '\n' + message
+        flag = self.send(header,message)
         return flag
 
     def get_msg(self,chat_page):
         header = 'GET'
-        self.send(header,self.user,chat_page)
+        self.send(header,chat_page)
+
+    def get_chat_list(self):
+        header = 'GET_CHATS'
+        self.send(header,' ')
+
+    def update_chat_list(self,payload):
+        friends = json.loads(payload)[0]
+        groups = json.loads(payload)[1]
+        for _ in friends:
+            self.chat_list.insert(self.fir_list, index='end', iid=[1,_], text=_)
+        for _ in groups:
+            self.chat_list.insert(self.group_list, index='end', iid=[0,_], text=_)
 
     def upload(self):
         pass
@@ -115,5 +158,6 @@ class Client:
     def download(self):
         pass
 
-    def error(self,l):
+    def error(self):
         print('error')
+

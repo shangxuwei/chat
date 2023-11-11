@@ -1,5 +1,5 @@
 import time
-
+import hashlib
 import pymysql
 
 DBS = {
@@ -12,10 +12,16 @@ DBS = {
     'groupinfo':{
         'group_name': 'varchar(33) NOT NULL',
         'manager': 'varchar(33) NOT NULL',
-        'group_number': 'varchar(33) NOT NULL',
         'KEY': ['group_name'],
-        'FOREIGN': 'FOREIGN KEY (manager) REFERENCES userinfo(username),'
-                    'FOREIGN KEY (group_number) REFERENCES userinfo(username)'
+        'FOREIGN': 'FOREIGN KEY (manager) REFERENCES userinfo(username)'
+    },
+    'group_members':{
+        'id': 'int AUTO_INCREMENT NOT NULL',
+        'group_name': 'varchar(33) NOT NULL',
+        'group_member': 'varchar(33) NOT NULL',
+        'KEY': ['id'],
+        'FOREIGN' : 'FOREIGN KEY (group_name) REFERENCES groupinfo(group_name),'
+                    'FOREIGN KEY (group_member) REFERENCES userinfo(username)'
     },
     'group_chat_history':{
         'id': 'int AUTO_INCREMENT NOT NULL',
@@ -71,6 +77,9 @@ class SQL_Operate:
         mysql_user = 'root'
         mysql_pwd = 'aa123456bb'
 
+        self.admin_user = 'admin'
+        self.admin_pwd = 'admin'
+
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
@@ -102,6 +111,15 @@ class SQL_Operate:
             self.cur.execute(sql)
             print(f'初始化{table}表')
         print("初始化完成")
+        pwd = hashlib.md5(self.admin_pwd.encode('utf-8')).hexdigest()
+        sql_select = f'INSERT INTO userinfo (username,password) VALUES ("{self.admin_user}","{pwd}")'
+        self.cur.execute(sql_select)
+        sql_select = f'INSERT INTO groupinfo(group_name, manager) VALUES ("public","{self.admin_user}")'
+        self.cur.execute(sql_select)
+        sql_select = f'INSERT INTO group_members (group_name, group_member) VALUES ("public", "{self.admin_user}")'
+        self.cur.execute(sql_select)
+        self.conn.commit()
+
 
     def login_check(self,user,pwd):
         sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
@@ -118,6 +136,8 @@ class SQL_Operate:
             # user exist
             return 0
         sql_select = f'INSERT INTO userinfo (username,password) VALUES ("{user}","{pwd}")'
+        self.cur.execute(sql_select)
+        sql_select = f'INSERT INTO group_members (group_name, group_member) VALUES ("public","{user}")'
         self.cur.execute(sql_select)
         self.conn.commit()
         return 1
@@ -143,3 +163,12 @@ class SQL_Operate:
         self.cur.execute(sql_select)
         msgs = self.cur.fetchall()
         return msgs
+
+    def get_chat_list(self,user):
+        sql_select = f'SELECT username2 FROM friends where username1="{user}"'
+        self.cur.execute(sql_select)
+        friends = [_[0] for _ in self.cur.fetchall()]
+        sql_select = f'SELECT group_name FROM group_members where group_member="{user}"'
+        self.cur.execute(sql_select)
+        groups = [_[0] for _ in self.cur.fetchall()]
+        return friends,groups
