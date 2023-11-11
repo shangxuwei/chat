@@ -94,5 +94,4 @@ class Service:
 
 if __name__ == "__main__":
     service = Service()
-    print(service.SQL_obj.get_group_members('public'))
     service.listen()
