@@ -5,6 +5,8 @@ import tkinter as tk
 import json
 from typing import *
 import hashlib
+from method.local import SqliteTools
+
 
 class Client:
     def __init__(self,user=None):
@@ -25,15 +27,7 @@ class Client:
 
         self.chat_page = [0,'public']
 
-    @staticmethod
-    def swatch_page(new_page=None,close_page: tk.Tk=None):
-        if close_page is not None:
-            close_page.destroy()
-        if new_page is not None:
-            init_window = tk.Tk()
-            init_window.resizable(width=False,height=False)
-            new_page(init_window)
-            init_window.mainloop()
+        self.Sql_obj = None
 
     def login(self,user,password):
         header = 'LOGIN'
@@ -79,7 +73,8 @@ class Client:
             return 2
 
     def listen(self):
-        while True:
+        self.Sql_obj = SqliteTools.SqlTools(self.user)
+        while self.online:
             data, address = self.sock.recvfrom(4096)
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
@@ -92,19 +87,30 @@ class Client:
                 'CHAT_LIST':[self.update_chat_list,payload]
             }
             method[header][0](*(method[header][1:]))
+        self.Sql_obj.cur.close()
+        self.Sql_obj.conn.close()
+        self.Sql_obj = None
 
-    def message(self,date,user,payload):
+    def insert_message(self,date,user,msg):
         t = time.localtime(float(date))
         date = f'{t.tm_year}/{t.tm_mon}/{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         self.messagebox.configure(state='normal')
-        self.messagebox.insert(tk.INSERT,f'[{date}]{user}: {payload}\n')
+        self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n')
         self.messagebox.configure(state='disabled')
 
+    def message(self,date,user,payload):
+        target, msg = payload.split('\n', 1)
+        target = json.loads(target)
+        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == user):
+            self.insert_message(date,user,msg)
+        else:
+            self.Sql_obj.insert_msg(target[0],target[1],msg)
+
     def logout(self):
-        self.online = 0
+        self.online=0
 
     def keep(self):
-        while True:
+        while self.online:
             self.send("ONLINE",'online')
             time.sleep(60)
 
@@ -160,4 +166,14 @@ class Client:
 
     def error(self):
         print('error')
+
+    @staticmethod
+    def swatch_page(new_page=None,close_page: tk.Tk=None):
+        if close_page is not None:
+            close_page.destroy()
+        if new_page is not None:
+            init_window = tk.Tk()
+            init_window.resizable(width=False,height=False)
+            new_page(init_window)
+            init_window.mainloop()
 
