@@ -110,7 +110,6 @@ class SQL_Operate:
             sql += ');'
             self.cur.execute(sql)
             print(f'初始化{table}表')
-        print("初始化完成")
         pwd = hashlib.md5(self.admin_pwd.encode('utf-8')).hexdigest()
         sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
         self.cur.execute(sql_select,(self.admin_user,pwd,))
@@ -119,6 +118,7 @@ class SQL_Operate:
         sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
         self.cur.execute(sql_select,(self.admin_user,))
         self.conn.commit()
+        print("初始化完成")
 
 
     def login_check(self,user,pwd):

@@ -41,6 +41,8 @@ class Service:
                 method[header][0](*(method[header][1:]))
             except ConnectionResetError:
                 print(self.ip_pool)
+            except KeyboardInterrupt:
+                break
             except:
                 traceback.print_exc()
                 self.sock.sendto('ERROR\n\n \n\n \n\n '.encode('utf-8'),address)
@@ -85,7 +87,6 @@ class Service:
             msg = list(msg[:3]) + [msg[3].strftime('%Y-%m-%d %H:%M:%S')] + list(msg[4:])
             self.sock.sendto(('HISTORY\n\n\n\n1\n\n'+json.dumps(msg)).encode('utf-8'),address)
         msgs = self.SQL_obj.get_msg(0,user)
-        print(msgs)
         for msg in msgs:
             msg = [0,msg[3].strftime('%Y-%m-%d %H:%M:%S'),msg[2],msg[1],msg[4]]
             self.sock.sendto(('HISTORY\n\n\n\n0\n\n'+json.dumps(msg)).encode('utf-8'),address)
