@@ -85,7 +85,7 @@ class SQL_Operate:
         self.cur = self.conn.cursor()
 
         if not bool(self.cur.execute("select 1 from information_schema.schemata  where schema_name=%s",(mysql_db,))):
-            self.cur.execute('CREATE DATABASE %s', (mysql_db,))
+            self.cur.execute(f'CREATE DATABASE {mysql_db}')
             self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db=mysql_db,
                                       user=mysql_user,password=mysql_pwd,charset='utf8mb4')
             self.cur = self.conn.cursor()
@@ -113,7 +113,7 @@ class SQL_Operate:
         print("初始化完成")
         pwd = hashlib.md5(self.admin_pwd.encode('utf-8')).hexdigest()
         sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
-        self.cur.execute(sql_select,(self.admin_user,self.admin_pwd,))
+        self.cur.execute(sql_select,(self.admin_user,pwd,))
         sql_select = 'INSERT INTO groupinfo(group_name, manager) VALUES ("public", %s)'
         self.cur.execute(sql_select,(self.admin_user,))
         sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
