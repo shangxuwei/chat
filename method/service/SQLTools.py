@@ -84,7 +84,7 @@ class SQL_Operate:
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
 
-        if not bool(self.cur.execute(f"select 1 from information_schema.schemata  where schema_name='{mysql_db}';")):
+        if not bool(self.cur.execute("select 1 from information_schema.schemata  where schema_name=%s",(mysql_db,))):
             self.cur.execute(f'CREATE DATABASE {mysql_db}')
             self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db=mysql_db,
                                       user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -112,63 +112,74 @@ class SQL_Operate:
             print(f'初始化{table}表')
         print("初始化完成")
         pwd = hashlib.md5(self.admin_pwd.encode('utf-8')).hexdigest()
-        sql_select = f'INSERT INTO userinfo (username,password) VALUES ("{self.admin_user}","{pwd}")'
-        self.cur.execute(sql_select)
-        sql_select = f'INSERT INTO groupinfo(group_name, manager) VALUES ("public","{self.admin_user}")'
-        self.cur.execute(sql_select)
-        sql_select = f'INSERT INTO group_members (group_name, group_member) VALUES ("public", "{self.admin_user}")'
-        self.cur.execute(sql_select)
+        sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
+        self.cur.execute(sql_select,(self.admin_user,pwd,))
+        sql_select = 'INSERT INTO groupinfo(group_name, manager) VALUES ("public", %s)'
+        self.cur.execute(sql_select,(self.admin_user,))
+        sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
+        self.cur.execute(sql_select,(self.admin_user,))
         self.conn.commit()
 
 
     def login_check(self,user,pwd):
-        sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
-        self.cur.execute(sql_select)
+        sql_select = 'SELECT * FROM userinfo WHERE username=%s'
+        self.cur.executemany(sql_select,(user,))
         result = self.cur.fetchall()
         if len(result) == 0 or pwd != result[0][1]:
             return 0
         return 1
 
     def register(self,user,pwd):
-        sql_select = f'SELECT * FROM userinfo WHERE username="{user}"'
-        self.cur.execute(sql_select)
+        sql_select = 'SELECT * FROM userinfo WHERE username=%s'
+        self.cur.execute(sql_select,(user,))
         if len(self.cur.fetchall()):
             # user exist
             return 0
-        sql_select = f'INSERT INTO userinfo (username,password) VALUES ("{user}","{pwd}")'
-        self.cur.execute(sql_select)
-        sql_select = f'INSERT INTO group_members (group_name, group_member) VALUES ("public","{user}")'
-        self.cur.execute(sql_select)
+        sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
+        self.cur.execute(sql_select,(user,pwd,))
+        sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
+        self.cur.execute(sql_select,(user,))
         self.conn.commit()
         return 1
 
-    def save_msg(self,date,usr,model,target,msg):
+    def save_msg(self,date,user,model,target,msg):
         t = time.localtime(float(date))
         date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         if model:
-            sql_select = (f'INSERT INTO private_chat_history (target_user, source_user, time, content)'
-                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
+            sql_select = ('INSERT INTO private_chat_history (target_user, source_user, time, content)'
+                          ' VALUES (%s, %s, %s, %s)')
         else:
-            sql_select = (f'INSERT INTO group_chat_history (target_group, source_user, time, content)'
-                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
-        self.cur.execute(sql_select)
+            sql_select = ('INSERT INTO group_chat_history (target_group, source_user, time, content)'
+                          ' VALUES (%s, %s, %s, %s)')
+        self.cur.execute(sql_select,(target, user, date, msg,))
         self.conn.commit()
 
-    def get_msg(self,model,user,target):
+    def get_msg(self,model,target):
         if model:
-            sql_select = (f'SELECT * FROM private_chat_history where (target_user="{target}" and source_user="{user}")'
-                          f'or (target_user="{user}" and source_user="{target}")')
+            sql_select = 'SELECT * FROM private_chat_history where (target_user=%s or source_user=%s)'
+            self.cur.execute(sql_select, (target, target,))
+            msgs = list(self.cur.fetchall())
         else:
-            sql_select = f'SELECT * FROM group_chat_history where target_group={target}'
-        self.cur.execute(sql_select)
-        msgs = self.cur.fetchall()
+            msgs = []
+            self.cur.execute('SELECT group_name FROM group_members WHERE group_member=%s',(target,))
+            groups = self.cur.fetchall()
+            for _ in groups:
+                sql_select = 'SELECT * FROM group_chat_history  where target_group=%s'
+                self.cur.execute(sql_select,(_,))
+                msgs += list(self.cur.fetchall()[-5:])
         return msgs
 
     def get_chat_list(self,user):
-        sql_select = f'SELECT username2 FROM friends where username1="{user}"'
-        self.cur.execute(sql_select)
+        sql_select = 'SELECT username2 FROM friends where username1=%s'
+        self.cur.execute(sql_select,(user,))
         friends = [_[0] for _ in self.cur.fetchall()]
-        sql_select = f'SELECT group_name FROM group_members where group_member="{user}"'
-        self.cur.execute(sql_select)
+        sql_select = 'SELECT group_name FROM group_members where group_member=%s'
+        self.cur.execute(sql_select,(user,))
         groups = [_[0] for _ in self.cur.fetchall()]
         return friends,groups
+
+    def get_group_members(self,group):
+        sql_select = f'SELECT group_member FROM group_members where group_name=%s'
+        self.cur.execute(sql_select,(group,))
+        members = [_[0] for _ in self.cur.fetchall()]
+        return members

@@ -2,7 +2,26 @@ from threading import Thread
 import time
 from method.local import client
 from page import login_page,register_page,chat_page
+import os
+import atexit
 
+@atexit.register
+def clean():
+    tools.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),tools.service)
+    tools.Sql_read.cur.close()
+    tools.Sql_read.conn.close()
+    time.sleep(0.5)
+    try:
+        os.remove(f'{tools.user}.db')
+    except:
+        print(f'删除本地缓存失败，请手动删除 {tools.user}.db 文件')
+    try:
+        os.remove(f'{tools.user}.db-journal')
+    except FileNotFoundError:
+        pass
+    except:
+        print(f'删除本地缓存失败，请手动删除 {tools.user}.db-journal 文件')
+    tools.sock.close()
 
 def run_login():
     page_login = login_page.LoginGui()
@@ -53,6 +72,7 @@ def run_chat():
     tools.group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
     tools.get_chat_list()
+    tools.get_history()
     def entry(event):
         send_msg()
         return 'break'
@@ -62,9 +82,8 @@ def run_chat():
         model, target = page_chat.chat_list.selection()[0].split(' ', 1)
         tools.chat_page = [int(model),target]
         page_chat.chat_page.set(target)
-        page_chat.msg.configure(state='normal')
-        page_chat.msg.delete('1.0','end')
-        page_chat.msg.configure(state='disabled')
+        page_chat.clear()
+        tools.switch_chat(int(model),target)
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
@@ -78,6 +97,3 @@ def run_chat():
 if __name__ == "__main__":
     tools = client.Client()
     run_login()
-
-
-

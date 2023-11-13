@@ -2,6 +2,32 @@
 
 ## 基于python的简单聊天室软件
 
+#### 项目文件结构
+
+```
+chat
+├── Doc
+│   ├── Database.md
+│   └── Develpment.md
+├── main.py
+├── method
+│   ├── local
+│   │   └── client.py
+│   └── service
+│       ├── serve.py
+│       └── SQLTools.py
+├── page
+│   ├── addfriend_page.py
+│   ├── chat_page.py
+│   ├── git_file_demo.py
+│   ├── login_page.py
+│   └── register_page.py
+├── README.md
+└── requirements.txt
+```
+
+
+
 #### 目标
 
 - 私聊功能：实现一对一的文字信息传输
@@ -21,7 +47,7 @@
 
 - [x] 用户注册
 - [x] 用户登录
-- [ ] 公共聊天室
+- [x] 公共聊天室
 - [ ] 公共文件传输
 - [ ] 好友添加
 - [ ] 好友私聊
