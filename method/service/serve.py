@@ -31,7 +31,7 @@ class Service:
                     'LOGIN': [self.login, address, user, payload],
                     'REGISTER': [self.register, address, user, payload],
                     'MESSAGE': [self.message, date, user, payload],
-                    'GET_FILE': [self.get_msg,user,payload],
+                    'GET_MESSAGE_HISTORY': [self.get_msg,user,address],
                     'UPLOAD': self.upload,
                     'DOWNLOAD': self.download,
                     'ONLINE': [self.online, address, user],
@@ -79,11 +79,18 @@ class Service:
                     self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{payload}'.encode('utf-8'), self.ip_pool[member])
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
-    def get_msg(self,user,payload):
-        target = json.loads(payload)
-        model = int(target[0])
-        msgs = self.SQL_obj.get_msg(model,user,target[1])
+    def get_msg(self,user,address):
+        msgs = self.SQL_obj.get_msg(1,user)
+        for msg in msgs:
+            msg = list(msg[:3]) + [msg[3].strftime('%Y-%m-%d %H:%M:%S')] + list(msg[4:])
+            self.sock.sendto(('HISTORY\n\n\n\n1\n\n'+json.dumps(msg)).encode('utf-8'),address)
+        msgs = self.SQL_obj.get_msg(0,user)
         print(msgs)
+        for msg in msgs:
+            msg = [0,msg[3].strftime('%Y-%m-%d %H:%M:%S'),msg[2],msg[1],msg[4]]
+            self.sock.sendto(('HISTORY\n\n\n\n0\n\n'+json.dumps(msg)).encode('utf-8'),address)
+
+        self.sock.sendto('HISTORY\n\n\n\n2\n\n'.encode('utf-8'),address)
 
     def get_chats(self,address,user):
         chat_list = self.SQL_obj.get_chat_list(user)
@@ -98,4 +105,5 @@ class Service:
 
 if __name__ == "__main__":
     service = Service()
+    # service.SQL_obj.get_msg(0,'admin')
     service.listen()

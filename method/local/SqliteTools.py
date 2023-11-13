@@ -3,8 +3,10 @@ import traceback
 
 DBS = {
     'message':{
-        'id': 'INT AUTO_INCREMENT NOT NULL',
+        'id': 'INTEGER',
         'model':'INT NOT NULL',
+        'data': 'DATETIME NOT NULL',
+        'page': 'VARCHAR(33) NOT NULL',
         'source': 'VARCHAR(33) NOT NULL',
         'content': 'VARCHAR(600) NOT NULL',
         'KEY': ['id'],
@@ -12,13 +14,15 @@ DBS = {
     }
 }
 class SqlTools:
-    def __init__(self,user):
+    def __init__(self,user,model='w'):
         self.conn = sqlite3.connect(f'./{user}.db')
         self.cur = self.conn.cursor()
-        try:
-            self.__build()
-        except:
-            print('初始化本地数据库失败')
+        if model != 'r':
+            try:
+                self.__build()
+            except:
+                traceback.print_exc()
+                print('初始化本地数据库失败')
 
     def __build(self):
         for table in DBS:
@@ -36,7 +40,13 @@ class SqlTools:
             self.cur.execute(sql)
             print('本地数据库初始化成功')
 
-    def insert_msg(self,model,source,content):
-        sql = 'INSERT INTO message (id,model,source,content) VALUES (?,?,?,?)'
-        self.cur.execute(sql,(1,model,source,content,))
-        print(self.cur.execute('SELECT * FROM message').fetchall())
+    def insert_msg(self,model,date,page,source,content):
+        sql = 'INSERT INTO message (id,model,data,page,source,content) VALUES (?,?,?,?,?,?)'
+        self.cur.execute(sql,(None,model,date,page,source,content,))
+        self.conn.commit()
+
+    def get_msg(self,model,target):
+        sql = 'SELECT * FROM message where page=?'
+        self.cur.execute(sql,(target,))
+        msgs = self.cur.fetchall()
+        return msgs

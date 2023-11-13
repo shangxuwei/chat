@@ -29,6 +29,7 @@ class Client:
 
         self.Sql_obj = None
 
+
     def login(self,user,password):
         header = 'LOGIN'
         date = time.mktime(time.localtime())
@@ -51,6 +52,7 @@ class Client:
                 keep = Thread(target=self.keep)
                 keep.daemon = True
                 keep.start()
+                self.Sql_read = SqliteTools.SqlTools(self.user,model='r')
             return int(data)
         except:
             return 2
@@ -84,27 +86,59 @@ class Client:
                 'ERROR': [self.error,None],
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,date,user,payload],
-                'CHAT_LIST':[self.update_chat_list,payload]
+                'CHAT_LIST':[self.update_chat_list,payload],
+                'HISTORY':[self.history,user,payload]
             }
             method[header][0](*(method[header][1:]))
         self.Sql_obj.cur.close()
         self.Sql_obj.conn.close()
         self.Sql_obj = None
 
+    def switch_chat(self,model,target):
+        msgs = self.Sql_read.get_msg(model,target)
+        for msg in msgs:
+            self.insert_message(msg[2],msg[4],msg[5])
+
+
+    def get_history(self):
+        self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
+
     def insert_message(self,date,user,msg):
-        t = time.localtime(float(date))
-        date = f'{t.tm_year}/{t.tm_mon}/{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+
+        self.messagebox.tag_add('other', tk.INSERT)  # 申明一个tag,在a位置使用
+        self.messagebox.tag_config('other', foreground='blue')
+        self.messagebox.tag_add('me', tk.INSERT)  # 申明一个tag,在a位置使用
+        self.messagebox.tag_config('me', foreground='green')
         self.messagebox.configure(state='normal')
-        self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n')
+        if user == self.user:
+            self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
+        else:
+            self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','other')
         self.messagebox.configure(state='disabled')
 
     def message(self,date,user,payload):
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
-        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == user):
-            self.insert_message(date,user,msg)
+        if user != self.user and target[0] == 1:
+            self.Sql_obj.insert_msg(target[0], date, user, user, msg)
         else:
-            self.Sql_obj.insert_msg(target[0],target[1],msg)
+            self.Sql_obj.insert_msg(target[0], date, target[1], user, msg)
+        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == user):
+            t = time.localtime(float(date))
+            date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+            self.insert_message(date,user,msg)
+
+    def history(self,model,payload):
+        if model == '0':
+            msg = json.loads(payload)
+            print(msg)
+            self.Sql_obj.insert_msg(*msg)
+        elif model == '1':
+            msg = json.loads(payload)
+            page = msg[1] if msg[1] != self.user else msg[2]
+            self.Sql_obj.insert_msg(int(model),msg[3],page,msg[2],msg[4])
+        elif model == '2':
+            print('finish')
 
     def logout(self):
         self.online=0

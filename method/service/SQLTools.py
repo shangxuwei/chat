@@ -135,9 +135,9 @@ class SQL_Operate:
         if len(self.cur.fetchall()):
             # user exist
             return 0
-        sql_select = f'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
+        sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
         self.cur.execute(sql_select,(user,pwd,))
-        sql_select = f'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
+        sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
         self.cur.execute(sql_select,(user,))
         self.conn.commit()
         return 1
@@ -154,15 +154,19 @@ class SQL_Operate:
         self.cur.execute(sql_select,(target, user, date, msg,))
         self.conn.commit()
 
-    def get_msg(self,model,user,target):
+    def get_msg(self,model,target):
         if model:
-            sql_select = (f'SELECT * FROM private_chat_history where (target_user=%s and source_user=%s)'
-                          f'or (target_user=%s and source_user=%s)')
-            self.cur.execute(sql_select, (target, user, user, target,))
+            sql_select = 'SELECT * FROM private_chat_history where (target_user=%s or source_user=%s)'
+            self.cur.execute(sql_select, (target, target,))
+            msgs = list(self.cur.fetchall())
         else:
-            sql_select = f'SELECT * FROM group_chat_history where target_group=%s'
-            self.cur.execute(sql_select,(target,))
-        msgs = self.cur.fetchall()
+            msgs = []
+            self.cur.execute('SELECT group_name FROM group_members WHERE group_member=%s',(target,))
+            groups = self.cur.fetchall()
+            for _ in groups:
+                sql_select = 'SELECT * FROM group_chat_history  where target_group=%s'
+                self.cur.execute(sql_select,(_,))
+                msgs += list(self.cur.fetchall()[-5:])
         return msgs
 
     def get_chat_list(self,user):

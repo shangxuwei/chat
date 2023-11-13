@@ -8,6 +8,8 @@ import atexit
 @atexit.register
 def clean():
     tools.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),tools.service)
+    tools.Sql_read.cur.close()
+    tools.Sql_read.conn.close()
     time.sleep(0.5)
     try:
         os.remove(f'{tools.user}.db')
@@ -70,6 +72,7 @@ def run_chat():
     tools.group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
     tools.get_chat_list()
+    tools.get_history()
     def entry(event):
         send_msg()
         return 'break'
@@ -80,6 +83,7 @@ def run_chat():
         tools.chat_page = [int(model),target]
         page_chat.chat_page.set(target)
         page_chat.clear()
+        tools.switch_chat(int(model),target)
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
