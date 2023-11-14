@@ -66,23 +66,7 @@ class ChatGui(tk.Tk):
         s2.config(command=self.chat_list.yview)
         # 好友分组
         self.fri_list = self.chat_list.insert('', 1, 'second', text='好友', )
-        # self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
-        # self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
         self.group_list = self.chat_list.insert('', 2, 'third', text='群聊', )
-        # self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
-        # self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
-
-        """bind key
-        self.fri_list.bind("<Double-Button-1>", mouse_clicked)
-        def mouse_clicked(self,event):
-            self.chat_page = 
-            print(self.fri_list.selection())
-
-        def entry(event):
-            self.send()
-            return 'break'
-        self.input_Text.bind("<Return>", entry)
-        """
 
     def get_msg(self,date: str,user: str,message: str):
         self.msg.configure(state='normal')

@@ -36,7 +36,7 @@ class Service:
                     'DOWNLOAD': self.download,
                     'ONLINE': [self.online, address, user],
                     'GET_CHATS':[self.get_chats,address,user],
-                    'LOGOUT':[self.logout, address]
+                    'LOGOUT':[self.logout, user, address]
                 }
                 method[header][0](*(method[header][1:]))
             except ConnectionResetError:
@@ -52,7 +52,8 @@ class Service:
             self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'),self.ip_pool[name])
         self.ip_pool[name]=address
 
-    def logout(self,address):
+    def logout(self,user,address):
+        print(user)
         self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'), address)
 
     def login(self,address,user,payload):

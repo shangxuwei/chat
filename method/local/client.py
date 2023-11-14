@@ -94,7 +94,7 @@ class Client:
         self.Sql_obj.conn.close()
         self.Sql_obj = None
 
-    def switch_chat(self,model,target):
+    def switch_chat(self, model, target):
         msgs = self.Sql_read.get_msg(model,target)
         for msg in msgs:
             self.insert_message(msg[2],msg[4],msg[5])
@@ -104,7 +104,6 @@ class Client:
         self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
 
     def insert_message(self,date,user,msg):
-
         self.messagebox.tag_add('other', tk.INSERT)  # 申明一个tag,在a位置使用
         self.messagebox.tag_config('other', foreground='blue')
         self.messagebox.tag_add('me', tk.INSERT)  # 申明一个tag,在a位置使用
@@ -114,6 +113,7 @@ class Client:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
         else:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','other')
+        self.messagebox.see('end')
         self.messagebox.configure(state='disabled')
 
     def message(self,date,user,payload):
@@ -131,14 +131,16 @@ class Client:
     def history(self,model,payload):
         if model == '0':
             msg = json.loads(payload)
-            print(msg)
             self.Sql_obj.insert_msg(*msg)
         elif model == '1':
             msg = json.loads(payload)
             page = msg[1] if msg[1] != self.user else msg[2]
             self.Sql_obj.insert_msg(int(model),msg[3],page,msg[2],msg[4])
         elif model == '2':
-            print('finish')
+            msgs = self.Sql_obj.get_msg(0, 'public')
+            for msg in msgs:
+                self.insert_message(msg[2], msg[4], msg[5])
+            print('历史记录同步完成')
 
     def logout(self):
         self.online=0
@@ -155,7 +157,7 @@ class Client:
         self.ackpool.append(hash(f'{header}{date}{self.user}'))
         while self.ack_check(hash(f'{header}{date}{self.user}')) and retry <= 5:
             self.sock.sendto(msg, self.service)
-            time.sleep(0.05)
+            time.sleep(0.1)
             retry += 1
         return retry <= 5
 

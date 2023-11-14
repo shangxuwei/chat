@@ -7,20 +7,21 @@ import atexit
 
 @atexit.register
 def clean():
-    tools.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),tools.service)
-    tools.Sql_read.cur.close()
-    tools.Sql_read.conn.close()
-    time.sleep(0.5)
-    try:
-        os.remove(f'{tools.user}.db')
-    except:
-        print(f'删除本地缓存失败，请手动删除 {tools.user}.db 文件')
-    try:
-        os.remove(f'{tools.user}.db-journal')
-    except FileNotFoundError:
-        pass
-    except:
-        print(f'删除本地缓存失败，请手动删除 {tools.user}.db-journal 文件')
+    if tools.user is not None:
+        tools.sock.sendto(f'LOGOUT\n\n\n\n{tools.user}\n\n'.encode('utf-8'),tools.service)
+        tools.Sql_read.cur.close()
+        tools.Sql_read.conn.close()
+        time.sleep(0.5)
+        try:
+            os.remove(f'{tools.user}.db')
+        except:
+            print(f'删除本地缓存失败，请手动删除 {tools.user}.db 文件')
+        try:
+            os.remove(f'{tools.user}.db-journal')
+        except FileNotFoundError:
+            pass
+        except:
+            print(f'删除本地缓存失败，请手动删除 {tools.user}.db-journal 文件')
     tools.sock.close()
 
 def run_login():
@@ -76,7 +77,7 @@ def run_chat():
     def entry(event):
         send_msg()
         return 'break'
-    page_chat.input_Text.bind("<Return>", entry)
+    page_chat.input_Text.bind("<Control-Return>", entry)
 
     def mouse_clicked(event):
         model, target = page_chat.chat_list.selection()[0].split(' ', 1)
@@ -87,11 +88,10 @@ def run_chat():
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
-        tools.chat(page_chat.get_text_msg())
-        return 'break'
+        msg = page_chat.get_text_msg()
+        if msg != '':
+            tools.chat(msg)
     page_chat.btn_send.configure(command=send_msg)
-
-
     page_chat.mainloop()
 
 if __name__ == "__main__":
