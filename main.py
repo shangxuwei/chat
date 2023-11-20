@@ -1,7 +1,7 @@
 from threading import Thread
 import time
 from method.local import client
-from page import login_page,register_page,chat_page
+from page import login_page,register_page,chat_page,addfriend_page
 import os
 import atexit
 
@@ -92,7 +92,15 @@ def run_chat():
         if msg != '':
             tools.chat(msg)
     page_chat.btn_send.configure(command=send_msg)
+
+    def add_friend():
+        run_add_page()
+    page_chat.btn_addfri.configure(command=add_friend)
     page_chat.mainloop()
+
+def run_add_page():
+    page=addfriend_page.AddGui()
+    page.mainloop()
 
 if __name__ == "__main__":
     tools = client.Client()

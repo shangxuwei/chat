@@ -19,6 +19,7 @@ class Service:
 
     def listen(self):
         while True:
+            print('开始监听')
             try:
                 data, address = self.sock.recvfrom(4096)
                 header, date, user, payload = data.decode('utf-8').split("\n\n", 3)

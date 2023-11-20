@@ -74,12 +74,6 @@ class ChatGui(tk.Tk):
         self.msg.insert(tk.INSERT,string)
         self.msg.configure(state='disabled')
 
-    def get_fri(self,friends: list,groups: list):
-        for _ in friends:
-            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
-        for _ in groups:
-            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
-
     def clear(self):
         self.msg.configure(state='normal')
         self.msg.delete('1.0', 'end')
