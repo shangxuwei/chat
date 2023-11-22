@@ -1,3 +1,5 @@
+import tkinter as tk
+import traceback
 from threading import Thread
 import time
 from method.local import client
@@ -9,8 +11,6 @@ import atexit
 def clean():
     if tools.user is not None:
         tools.sock.sendto(f'LOGOUT\n\n\n\n{tools.user}\n\n'.encode('utf-8'),tools.service)
-        tools.Sql_read.cur.close()
-        tools.Sql_read.conn.close()
         time.sleep(0.5)
         try:
             os.remove(f'{tools.user}.db')
@@ -68,23 +68,31 @@ def run_register():
 def run_chat():
     page_chat = chat_page.ChatGui()
     page_chat.title(f'chat : {tools.user}')
+
     tools.chat_list = page_chat.chat_list
-    tools.fir_list = page_chat.fri_list
-    tools.group_list = page_chat.group_list
+    tools.chat_fir_list = page_chat.fri_list
+    tools.chat_group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
+
     tools.get_chat_list()
     tools.get_history()
     def entry(event):
         send_msg()
         return 'break'
-    page_chat.input_Text.bind("<Control-Return>", entry)
+    page_chat.input_Text.bind("<Return>", entry)
+    def enter(event):
+        page_chat.input_Text.insert(tk.INSERT,'\n')
+        return 'break'
+    page_chat.input_Text.bind("<Shift-Return>", enter)
 
     def mouse_clicked(event):
-        model, target = page_chat.chat_list.selection()[0].split(' ', 1)
-        tools.chat_page = [int(model),target]
-        page_chat.chat_page.set(target)
-        page_chat.clear()
-        tools.switch_chat(int(model),target)
+        try:
+            model, target = page_chat.chat_list.selection()[0].split(' ', 1)
+            page_chat.chat_page.set(target)
+            page_chat.clear()
+            tools.switch_chat(int(model),target)
+        except ValueError:
+            pass
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
@@ -103,5 +111,8 @@ def run_add_page():
     page.mainloop()
 
 if __name__ == "__main__":
-    tools = client.Client()
-    run_login()
+    try:
+        tools = client.Client()
+        run_login()
+    except KeyboardInterrupt:
+        clean()
