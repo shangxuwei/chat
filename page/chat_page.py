@@ -35,12 +35,9 @@ class ChatGui(tk.Tk):
         tk.Label(self, textvariable=self.chat_page).place(x=0, y=0)
         tk.Label(self, text="输入").place(x=0, y=435)
 
-        s3 = (tk.Scrollbar(self))
-        s3.place(x=775, y=20, height=320)
         self.msg = tk.Text(self, width=110, height=23)
         self.msg.place(x=0, y=30)
         self.msg.configure(state='disabled') #只读不写
-        s3.config(command=self.msg.yview)
 
         self.input_Text = tk.Text(self, width=110, height=4)
         self.input_Text.place(x=0,y=470)
@@ -66,35 +63,13 @@ class ChatGui(tk.Tk):
         s2.config(command=self.chat_list.yview)
         # 好友分组
         self.fri_list = self.chat_list.insert('', 1, 'second', text='好友', )
-        # self.fri_tree2_1 = self.fri_list.insert(self.fri_tree2, 0, '003', text='admin3', )
-        # self.fri_tree2_2 = self.fri_list.insert(self.fri_tree2, 1, '004', text='admin4', )
         self.group_list = self.chat_list.insert('', 2, 'third', text='群聊', )
-        # self.fri_tree3_1 = self.fri_list.insert(self.fri_tree3, 0, '005', text='group1', )
-        # self.fri_tree3_2 = self.fri_list.insert(self.fri_tree3, 1, '006', text='group2', )
-
-        """bind key
-        self.fri_list.bind("<Double-Button-1>", mouse_clicked)
-        def mouse_clicked(self,event):
-            self.chat_page = 
-            print(self.fri_list.selection())
-
-        def entry(event):
-            self.send()
-            return 'break'
-        self.input_Text.bind("<Return>", entry)
-        """
 
     def get_msg(self,date: str,user: str,message: str):
         self.msg.configure(state='normal')
         string = f'{date}[{user}]: {message}'
         self.msg.insert(tk.INSERT,string)
         self.msg.configure(state='disabled')
-
-    def get_fri(self,friends: list,groups: list):
-        for _ in friends:
-            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
-        for _ in groups:
-            self.chat_list.insert(self.fri_list,'end',text=_,values=_)
 
     def clear(self):
         self.msg.configure(state='normal')

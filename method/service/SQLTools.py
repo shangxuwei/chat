@@ -51,7 +51,7 @@ DBS = {
                    'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username)'
     },
     'friends':{
-        'username1': 'varchar(33) NOT NULL NOT NULL',
+        'username1': 'varchar(33) NOT NULL',
         'username2': 'varchar(33) NOT NULL',
         'KEY': ['username1','username2'],
         'FOREIGN': 'FOREIGN KEY (username1) REFERENCES userinfo(username),'

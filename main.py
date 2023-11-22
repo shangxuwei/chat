@@ -1,26 +1,27 @@
+import tkinter as tk
+import traceback
 from threading import Thread
 import time
 from method.local import client
-from page import login_page,register_page,chat_page
+from page import login_page,register_page,chat_page,addfriend_page
 import os
 import atexit
 
 @atexit.register
 def clean():
-    tools.sock.sendto('LOGOUT\n\n\n\n\n\n'.encode('utf-8'),tools.service)
-    tools.Sql_read.cur.close()
-    tools.Sql_read.conn.close()
-    time.sleep(0.5)
-    try:
-        os.remove(f'{tools.user}.db')
-    except:
-        print(f'删除本地缓存失败，请手动删除 {tools.user}.db 文件')
-    try:
-        os.remove(f'{tools.user}.db-journal')
-    except FileNotFoundError:
-        pass
-    except:
-        print(f'删除本地缓存失败，请手动删除 {tools.user}.db-journal 文件')
+    if tools.user is not None:
+        tools.sock.sendto(f'LOGOUT\n\n\n\n{tools.user}\n\n'.encode('utf-8'),tools.service)
+        time.sleep(0.5)
+        try:
+            os.remove(f'{tools.user}.db')
+        except:
+            print(f'删除本地缓存失败，请手动删除 {tools.user}.db 文件')
+        try:
+            os.remove(f'{tools.user}.db-journal')
+        except FileNotFoundError:
+            pass
+        except:
+            print(f'删除本地缓存失败，请手动删除 {tools.user}.db-journal 文件')
     tools.sock.close()
 
 def run_login():
@@ -67,33 +68,51 @@ def run_register():
 def run_chat():
     page_chat = chat_page.ChatGui()
     page_chat.title(f'chat : {tools.user}')
+
     tools.chat_list = page_chat.chat_list
-    tools.fir_list = page_chat.fri_list
-    tools.group_list = page_chat.group_list
+    tools.chat_fir_list = page_chat.fri_list
+    tools.chat_group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
+
     tools.get_chat_list()
     tools.get_history()
     def entry(event):
         send_msg()
         return 'break'
     page_chat.input_Text.bind("<Return>", entry)
+    def enter(event):
+        page_chat.input_Text.insert(tk.INSERT,'\n')
+        return 'break'
+    page_chat.input_Text.bind("<Shift-Return>", enter)
 
     def mouse_clicked(event):
-        model, target = page_chat.chat_list.selection()[0].split(' ', 1)
-        tools.chat_page = [int(model),target]
-        page_chat.chat_page.set(target)
-        page_chat.clear()
-        tools.switch_chat(int(model),target)
+        try:
+            model, target = page_chat.chat_list.selection()[0].split(' ', 1)
+            page_chat.chat_page.set(target)
+            page_chat.clear()
+            tools.switch_chat(int(model),target)
+        except ValueError:
+            pass
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def send_msg():
-        tools.chat(page_chat.get_text_msg())
-        return 'break'
+        msg = page_chat.get_text_msg()
+        if msg != '':
+            tools.chat(msg)
     page_chat.btn_send.configure(command=send_msg)
 
-
+    def add_friend():
+        run_add_page()
+    page_chat.btn_addfri.configure(command=add_friend)
     page_chat.mainloop()
 
+def run_add_page():
+    page=addfriend_page.AddGui()
+    page.mainloop()
+
 if __name__ == "__main__":
-    tools = client.Client()
-    run_login()
+    try:
+        tools = client.Client()
+        run_login()
+    except KeyboardInterrupt:
+        clean()

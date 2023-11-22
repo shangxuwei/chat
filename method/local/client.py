@@ -2,10 +2,14 @@ import socket
 import time
 from threading import Thread
 import tkinter as tk
+from tkinter import ttk
 import json
 from typing import *
 import hashlib
 from method.local import SqliteTools
+from concurrent.futures import ThreadPoolExecutor
+import traceback
+import tkinter.messagebox
 
 
 class Client:
@@ -17,20 +21,34 @@ class Client:
         self.user = user
 
         self.ackpool = []
-
+        self.message_pool = ThreadPoolExecutor(max_workers=5)
         self.online = 0
 
-        self.messagebox = None
-        self.chat_list = None
-        self.fir_list = ''
-        self.group_list = ''
+        self.messagebox: tk.Text() = None
+        self.chat_list: ttk.Treeview() = None
+        self.chat_fir_list = ''
+        self.chat_group_list = ''
 
-        self.chat_page = [0,'public']
+        self.request_list: ttk.Treeview() = None
+
+        self.chat_page = []
 
         self.Sql_obj = None
 
+    @staticmethod
+    def sql_operate(func):
+        def init(self,*args):
+            self.Sql_obj = SqliteTools.SqlTools(self.user,model='run')
+            try:
+                func(self,*args)
+            finally:
+                if self.Sql_obj is not None:
+                    self.Sql_obj.cur.close()
+                    self.Sql_obj.conn.close()
+                    self.Sql_obj = None
+        return init
 
-    def login(self,user,password):
+    def login(self,user: str,password: str) -> int:
         header = 'LOGIN'
         date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
@@ -52,7 +70,7 @@ class Client:
                 keep = Thread(target=self.keep)
                 keep.daemon = True
                 keep.start()
-                self.Sql_read = SqliteTools.SqlTools(self.user,model='r')
+                self.Sql_obj = SqliteTools.SqlTools(self.user,model='init')
             return int(data)
         except:
             return 2
@@ -75,7 +93,6 @@ class Client:
             return 2
 
     def listen(self):
-        self.Sql_obj = SqliteTools.SqlTools(self.user)
         while self.online:
             data, address = self.sock.recvfrom(4096)
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
@@ -90,12 +107,11 @@ class Client:
                 'HISTORY':[self.history,user,payload]
             }
             method[header][0](*(method[header][1:]))
-        self.Sql_obj.cur.close()
-        self.Sql_obj.conn.close()
-        self.Sql_obj = None
 
-    def switch_chat(self,model,target):
-        msgs = self.Sql_read.get_msg(model,target)
+    @sql_operate
+    def switch_chat(self, model: int, target: str) -> None:
+        self.chat_page=[model, target]
+        msgs = self.Sql_obj.get_msg(model,target)
         for msg in msgs:
             self.insert_message(msg[2],msg[4],msg[5])
 
@@ -103,19 +119,23 @@ class Client:
     def get_history(self):
         self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
 
-    def insert_message(self,date,user,msg):
-
-        self.messagebox.tag_add('other', tk.INSERT)  # 申明一个tag,在a位置使用
+    def insert_message(self,date: str,user: str,msg: str) -> None:
+        self.messagebox.tag_add('other', tk.INSERT)
         self.messagebox.tag_config('other', foreground='blue')
-        self.messagebox.tag_add('me', tk.INSERT)  # 申明一个tag,在a位置使用
+        self.messagebox.tag_add('me', tk.INSERT)
         self.messagebox.tag_config('me', foreground='green')
+        self.messagebox.tag_add('system', tk.INSERT)
+        self.messagebox.tag_config('system', foreground='gray')
         self.messagebox.configure(state='normal')
         if user == self.user:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
         else:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','other')
+        self.messagebox.insert(tk.INSERT,'-' * 110 +'\n','system')
+        self.messagebox.see('end')
         self.messagebox.configure(state='disabled')
 
+    @sql_operate
     def message(self,date,user,payload):
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
@@ -128,16 +148,18 @@ class Client:
             date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
             self.insert_message(date,user,msg)
 
+    @sql_operate
     def history(self,model,payload):
         if model == '0':
             msg = json.loads(payload)
-            print(msg)
             self.Sql_obj.insert_msg(*msg)
         elif model == '1':
             msg = json.loads(payload)
             page = msg[1] if msg[1] != self.user else msg[2]
             self.Sql_obj.insert_msg(int(model),msg[3],page,msg[2],msg[4])
         elif model == '2':
+            self.switch_chat(0,'public')
+            tkinter.messagebox.showinfo(title='esaychat:system',message='历史记录同步完成')
             print('finish')
 
     def logout(self):
@@ -148,37 +170,36 @@ class Client:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header,payload):
-        date = time.mktime(time.localtime())
-        msg = f"{header}\n\n{date}\n\n{self.user}\n\n{payload}".encode('utf-8')
-        retry = 0
-        self.ackpool.append(hash(f'{header}{date}{self.user}'))
-        while self.ack_check(hash(f'{header}{date}{self.user}')) and retry <= 5:
-            self.sock.sendto(msg, self.service)
-            time.sleep(0.05)
-            retry += 1
-        return retry <= 5
+    def send(self,header: str,payload: str) -> None:
+        def send_message(head: str, message: str) -> None:
+            date = time.mktime(time.localtime())
+            msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
+            retry = 0
+            self.ackpool.append(hash(f'{head}{date}{self.user}'))
+            while self.ack_check(hash(f'{head}{date}{self.user}')) and retry <= 5:
+                self.sock.sendto(msg, self.service)
+                time.sleep(2)
+                retry += 1
+            if retry > 5:
+                tkinter.messagebox.showerror(title=head,message='connect timeout')
+        self.message_pool.submit(send_message,header,payload)
 
-    def ack(self, header, date, user):
+
+    def ack(self, header: str, date: str, user: str) -> None:
         try:
             self.ackpool.remove(hash(f'{header}{date}{user}'))
         except:
             pass
 
-    def ack_check(self, flag):
+    def ack_check(self, flag: int):
         if flag in self.ackpool:
             return True
         return False
 
-    def chat(self,message):
+    def chat(self,message: str):
         header = 'MESSAGE'
         message = json.dumps(self.chat_page) + '\n' + message
-        flag = self.send(header,message)
-        return flag
-
-    def get_msg(self,chat_page):
-        header = 'GET'
-        self.send(header,chat_page)
+        self.send(header,message)
 
     def get_chat_list(self):
         header = 'GET_CHATS'
@@ -188,9 +209,18 @@ class Client:
         friends = json.loads(payload)[0]
         groups = json.loads(payload)[1]
         for _ in friends:
-            self.chat_list.insert(self.fir_list, index='end', iid=[1,_], text=_)
+            try:
+                self.chat_list.insert(self.chat_fir_list, index='end', iid=f'1 {_}', text=_)
+            except:
+                pass
         for _ in groups:
-            self.chat_list.insert(self.group_list, index='end', iid=[0,_], text=_)
+            try:
+                self.chat_list.insert(self.chat_group_list, index='end', iid=f'0 {_}', text=_)
+            except:
+                pass
+
+    def update_request_list(self,payload):
+        pass
 
     def upload(self):
         pass
@@ -199,15 +229,5 @@ class Client:
         pass
 
     def error(self):
-        print('error')
-
-    @staticmethod
-    def swatch_page(new_page=None,close_page: tk.Tk=None):
-        if close_page is not None:
-            close_page.destroy()
-        if new_page is not None:
-            init_window = tk.Tk()
-            init_window.resizable(width=False,height=False)
-            new_page(init_window)
-            init_window.mainloop()
+        pass
 
