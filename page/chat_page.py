@@ -35,12 +35,9 @@ class ChatGui(tk.Tk):
         tk.Label(self, textvariable=self.chat_page).place(x=0, y=0)
         tk.Label(self, text="输入").place(x=0, y=435)
 
-        s3 = (tk.Scrollbar(self))
-        s3.place(x=775, y=20, height=320)
         self.msg = tk.Text(self, width=110, height=23)
         self.msg.place(x=0, y=30)
         self.msg.configure(state='disabled') #只读不写
-        s3.config(command=self.msg.yview)
 
         self.input_Text = tk.Text(self, width=110, height=4)
         self.input_Text.place(x=0,y=470)
