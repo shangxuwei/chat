@@ -14,12 +14,17 @@ DBS = {
     }
 }
 class SqlTools:
-    def __init__(self,user,model='w'):
+    def __init__(self,user,model):
+        if model not in ['init','run']:
+            raise ValueError('model only accept "init" or "run"')
         self.conn = sqlite3.connect(f'./{user}.db')
         self.cur = self.conn.cursor()
-        if model != 'r':
+        if model == 'init':
             try:
                 self.__build()
+                self.cur.close()
+                self.conn.close()
+                print('本地数据库初始化成功')
             except:
                 traceback.print_exc()
                 print('初始化本地数据库失败')
@@ -38,7 +43,6 @@ class SqlTools:
                         sql += f',{DBS[table][field]}'
             sql += ');'
             self.cur.execute(sql)
-            print('本地数据库初始化成功')
 
     def insert_msg(self,model,date,page,source,content):
         sql = 'INSERT INTO message (id,model,data,page,source,content) VALUES (?,?,?,?,?,?)'
