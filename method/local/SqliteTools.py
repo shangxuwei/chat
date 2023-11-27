@@ -1,5 +1,6 @@
 import sqlite3
 import traceback
+from typing import Literal
 
 DBS = {
     'message':{
@@ -14,9 +15,7 @@ DBS = {
     }
 }
 class SqlTools:
-    def __init__(self,user,model):
-        if model not in ['init','run']:
-            raise ValueError('model only accept "init" or "run"')
+    def __init__(self,user,model: Literal['init','run']):
         self.conn = sqlite3.connect(f'./{user}.db')
         self.cur = self.conn.cursor()
         if model == 'init':
