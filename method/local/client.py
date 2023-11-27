@@ -24,12 +24,18 @@ class Client:
         self.message_pool = ThreadPoolExecutor(max_workers=5)
         self.online = 0
 
-        self.messagebox: tk.Text() = None
-        self.chat_list: ttk.Treeview() = None
-        self.chat_fir_list = ''
-        self.chat_group_list = ''
+        self.messagebox: tk.Text = None # 聊天消息框
 
-        self.request_list: ttk.Treeview() = None
+        self.chat_list: ttk.Treeview = None # 好友/群组 列表
+        self.chat_fir_list = '' # 好友列表
+        self.chat_group_list = '' # 群组列表
+
+        self.search_text:tk.Text = None # 搜索框
+        self.request_list: ttk.Treeview = None # 请求列表
+        self.my_fri_requests = '' # 我发送的请求
+        self.my_group_requests = ''
+        self.fri_requests = '' # 好友请求
+        self.group_requests = '' # 加入群聊请求
 
         self.chat_page = []
 
@@ -104,6 +110,7 @@ class Client:
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,date,user,payload],
                 'CHAT_LIST':[self.update_chat_list,payload],
+                'ADD_REQUESTS':[self.update_requests_list,payload],
                 'HISTORY':[self.history,user,payload]
             }
             method[header][0](*(method[header][1:]))
@@ -119,16 +126,20 @@ class Client:
     def get_history(self):
         self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
 
-    def insert_message(self,date: str,user: str,msg: str) -> None:
+    def message_color_init(self):
         self.messagebox.tag_add('other', tk.INSERT)
         self.messagebox.tag_config('other', foreground='blue')
         self.messagebox.tag_add('me', tk.INSERT)
         self.messagebox.tag_config('me', foreground='green')
         self.messagebox.tag_add('system', tk.INSERT)
         self.messagebox.tag_config('system', foreground='gray')
+
+    def insert_message(self,date: str,user: str,msg: str) -> None:
         self.messagebox.configure(state='normal')
         if user == self.user:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
+        if user == 'system':
+            self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','system')
         else:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','other')
         self.messagebox.insert(tk.INSERT,'-' * 110 +'\n','system')
@@ -136,17 +147,17 @@ class Client:
         self.messagebox.configure(state='disabled')
 
     @sql_operate
-    def message(self,date,user,payload):
+    def message(self,date,source_user,payload):
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
-        if user != self.user and target[0] == 1:
-            self.Sql_obj.insert_msg(target[0], date, user, user, msg)
+        t = time.localtime(float(date))
+        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        if source_user != self.user and target[0] == 1:
+            self.Sql_obj.insert_msg(target[0], date, source_user, source_user, msg)
         else:
-            self.Sql_obj.insert_msg(target[0], date, target[1], user, msg)
-        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == user):
-            t = time.localtime(float(date))
-            date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-            self.insert_message(date,user,msg)
+            self.Sql_obj.insert_msg(target[0], date, target[1], source_user, msg)
+        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == source_user):
+            self.insert_message(date,source_user,msg)
 
     @sql_operate
     def history(self,model,payload):
@@ -158,9 +169,8 @@ class Client:
             page = msg[1] if msg[1] != self.user else msg[2]
             self.Sql_obj.insert_msg(int(model),msg[3],page,msg[2],msg[4])
         elif model == '2':
-            self.switch_chat(0,'public')
+            self.switch_chat(1,'system')
             tkinter.messagebox.showinfo(title='esaychat:system',message='历史记录同步完成')
-            print('finish')
 
     def logout(self):
         self.online=0
@@ -210,16 +220,47 @@ class Client:
         groups = json.loads(payload)[1]
         for _ in friends:
             try:
-                self.chat_list.insert(self.chat_fir_list, index='end', iid=f'1 {_}', text=_)
+                self.chat_list.insert(self.chat_fir_list, index='end', tags=[json.dumps([1,_])], text=_)
             except:
                 pass
         for _ in groups:
             try:
-                self.chat_list.insert(self.chat_group_list, index='end', iid=f'0 {_}', text=_)
+                self.chat_list.insert(self.chat_group_list, index='end', tags=[json.dumps([0,_])], text=_)
             except:
                 pass
 
-    def update_request_list(self,payload):
+    def get_requests_list(self):
+        self.send('GET_ADD_REQUEST','')
+
+    @staticmethod
+    def format_request(text: str | list[str, str]) -> str:
+        if isinstance(text, list):
+            return f'{text[0]} -> {text[1]}'
+        return text
+
+    def update_requests_list(self,payload: str):
+        requests = json.loads(payload)
+        trees = [self.my_fri_requests, self.my_group_requests, self.fri_requests, self.group_requests]
+        for reqs,tree in zip(requests,trees):
+            for _ in reqs:
+                node = self.request_list.insert(tree,'end',_,text=self.format_request(_))
+                if tree in trees[-2:]:
+                    self.request_list.insert(node, 'end', tags=[json.dumps([_,1])], text='同意')
+                    self.request_list.insert(node, 'end', tags=[json.dumps([_,0])], text='拒绝')
+
+    def respond_request(self,target: str | list,res: int,iid: str) -> None:
+        if res == 1:
+            if isinstance(target,list):
+                self.update_chat_list(json.dumps(([],[target[1]])))
+            else:
+                self.update_chat_list(json.dumps(([target],[])))
+        self.request_list.delete(iid)
+        self.send('REPLY_REQUEST',json.dumps([target,res]))
+
+    def search(self,target):
+        self.send('SEARCH',target)
+
+    def response_search(self):
         pass
 
     def upload(self):
