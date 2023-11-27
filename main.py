@@ -1,3 +1,4 @@
+import json
 import tkinter as tk
 import traceback
 from threading import Thread
@@ -61,6 +62,8 @@ def run_register():
                 page_register.succeed()
             elif flag == 2:
                 page_register.time_out()
+            elif flag == 3:
+                page_register.invalid_name()
 
     page_register.btn_register.configure(command=register)
     page_register.mainloop()
@@ -73,6 +76,7 @@ def run_chat():
     tools.chat_fir_list = page_chat.fri_list
     tools.chat_group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
+    tools.message_color_init()
 
     tools.get_chat_list()
     tools.get_history()
@@ -87,10 +91,15 @@ def run_chat():
 
     def mouse_clicked(event):
         try:
-            model, target = page_chat.chat_list.selection()[0].split(' ', 1)
+            items = page_chat.chat_list.selection()[0]
+            values = page_chat.chat_list.item(items)
+            model, target = json.loads(values['tags'][0])
             page_chat.chat_page.set(target)
             page_chat.clear()
-            tools.switch_chat(int(model),target)
+            print(type(model),type(target),model,target)
+            tools.switch_chat(model,target)
+        except IndexError:
+            pass
         except ValueError:
             pass
     page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
@@ -107,8 +116,33 @@ def run_chat():
     page_chat.mainloop()
 
 def run_add_page():
-    page=addfriend_page.AddGui()
-    page.mainloop()
+    page_add=addfriend_page.AddGui()
+
+    tools.request_list = page_add.request_list
+    tools.my_fri_requests = page_add.my_fir_request
+    tools.my_group_requests = page_add.my_group_request
+    tools.fri_requests = page_add.friend_tree
+    tools.group_requests = page_add.group_tree
+    tools.search_text = page_add.search_Text
+
+    tools.get_requests_list()
+    def search():
+        target = page_add.search_Text.get()
+        friend, group = tools.search(target)
+    page_add.search_Button.configure(command=search)
+    def mouse_clicked(event):
+        items = page_add.request_list.selection()[0]
+        parent = page_add.request_list.parent(items)
+        values = page_add.request_list.item(items)
+        try:
+            target, res = json.loads(values['tags'][0])
+            tools.respond_request(target,res,parent)
+            print(type(values['tags']), json.loads(values['tags'][-1]))
+        except IndexError:
+            pass
+    page_add.request_list.bind("<Double-Button-1>", mouse_clicked)
+
+    page_add.mainloop()
 
 if __name__ == "__main__":
     try:
