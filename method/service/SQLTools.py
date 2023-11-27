@@ -57,6 +57,20 @@ DBS = {
         'FOREIGN': 'FOREIGN KEY (username1) REFERENCES userinfo(username),'
                    'FOREIGN KEY (username2) REFERENCES userinfo(username)'
     },
+    'add_friend_requests':{
+        'source':'varchar(33) NOT NULL',
+        'target':'varchar(33) NOT NULL',
+        'KEY':['source','target'],
+        'FOREIGN':'FOREIGN KEY (source) REFERENCES userinfo(username),'
+                   'FOREIGN KEY (target) REFERENCES userinfo(username)'
+    },
+    'add_group_requests': {
+        'source': 'varchar(33) NOT NULL',
+        'target': 'varchar(33) NOT NULL',
+        'KEY': ['source', 'target'],
+        'FOREIGN': 'FOREIGN KEY (source) REFERENCES userinfo(username),'
+                   'FOREIGN KEY (target) REFERENCES groupinfo(group_name)'
+    },
     'private_chat_history':{
         'id': 'int AUTO_INCREMENT NOT NULL',
         'target_user': 'varchar(33) NOT NULL',
@@ -77,14 +91,15 @@ class SQL_Operate:
         mysql_user = 'root'
         mysql_pwd = 'aa123456bb'
 
-        self.admin_user = 'admin'
-        self.admin_pwd = 'admin'
+        self.System = 'system'
+        self.System_pwd = 'aa123456bb'
+        self.System_pwd=hashlib.md5(self.System_pwd.encode('utf-8')).hexdigest()
 
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
 
-        if not bool(self.cur.execute("select 1 from information_schema.schemata  where schema_name=%s",(mysql_db,))):
+        if not bool(self.cur.execute("SELECT 1 FROM information_schema.schemata  WHERE schema_name=%s",(mysql_db,))):
             self.cur.execute(f'CREATE DATABASE {mysql_db}')
             self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db=mysql_db,
                                       user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -110,76 +125,144 @@ class SQL_Operate:
             sql += ');'
             self.cur.execute(sql)
             print(f'初始化{table}表')
-        pwd = hashlib.md5(self.admin_pwd.encode('utf-8')).hexdigest()
-        sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
-        self.cur.execute(sql_select,(self.admin_user,pwd,))
-        sql_select = 'INSERT INTO groupinfo(group_name, manager) VALUES ("public", %s)'
-        self.cur.execute(sql_select,(self.admin_user,))
-        sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
-        self.cur.execute(sql_select,(self.admin_user,))
+        sql = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
+        self.cur.execute(sql,(self.System,self.System_pwd,))
+        sql = 'INSERT INTO groupinfo(group_name, manager) VALUES ("public", %s)'
+        self.cur.execute(sql,(self.System,))
+        sql = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
+        self.cur.execute(sql,(self.System,))
         self.conn.commit()
         print("初始化完成")
 
 
-    def login_check(self,user,pwd):
-        sql_select = 'SELECT * FROM userinfo WHERE username=%s'
-        self.cur.executemany(sql_select,(user,))
+    def login_check(self,user: str,pwd: str) -> int:
+        sql = 'SELECT * FROM userinfo WHERE username=%s'
+        self.cur.executemany(sql,(user,))
         result = self.cur.fetchall()
         if len(result) == 0 or pwd != result[0][1]:
             return 0
         return 1
 
-    def register(self,user,pwd):
-        sql_select = 'SELECT * FROM userinfo WHERE username=%s'
-        self.cur.execute(sql_select,(user,))
+    def register(self,user: str,pwd: str) -> int:
+        sql = 'SELECT * FROM userinfo WHERE username=%s'
+        self.cur.execute(sql,(user,))
         if len(self.cur.fetchall()):
             # user exist
             return 0
-        sql_select = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
-        self.cur.execute(sql_select,(user,pwd,))
-        sql_select = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
-        self.cur.execute(sql_select,(user,))
+        sql = 'INSERT INTO userinfo (username,password) VALUES (%s, %s)'
+        self.cur.execute(sql,(user,pwd,))
+        sql = 'INSERT INTO group_members (group_name, group_member) VALUES ("public", %s)'
+        self.cur.execute(sql,(user,))
+        sql = 'INSERT INTO friends (username1, username2) VALUES (%s,%s)'
+        self.cur.execute(sql,('system',user,))
         self.conn.commit()
         return 1
 
-    def save_msg(self,date,user,model,target,msg):
+    def save_msg(self,date: float,user: str,model: int,target: str,msg: str) -> None:
         t = time.localtime(float(date))
         date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         if model:
-            sql_select = ('INSERT INTO private_chat_history (target_user, source_user, time, content)'
+            sql = ('INSERT INTO private_chat_history (target_user, source_user, time, content)'
                           ' VALUES (%s, %s, %s, %s)')
         else:
-            sql_select = ('INSERT INTO group_chat_history (target_group, source_user, time, content)'
+            sql = ('INSERT INTO group_chat_history (target_group, source_user, time, content)'
                           ' VALUES (%s, %s, %s, %s)')
-        self.cur.execute(sql_select,(target, user, date, msg,))
+        self.cur.execute(sql,(target, user, date, msg,))
         self.conn.commit()
 
-    def get_msg(self,model,target):
+    def get_msg(self,model: int,target: str):
         if model:
-            sql_select = 'SELECT * FROM private_chat_history where (target_user=%s or source_user=%s)'
-            self.cur.execute(sql_select, (target, target,))
+            sql = 'SELECT * FROM private_chat_history WHERE (target_user=%s or source_user=%s)'
+            self.cur.execute(sql, (target, target,))
             msgs = list(self.cur.fetchall())
         else:
             msgs = []
             self.cur.execute('SELECT group_name FROM group_members WHERE group_member=%s',(target,))
             groups = self.cur.fetchall()
             for _ in groups:
-                sql_select = 'SELECT * FROM group_chat_history  where target_group=%s'
-                self.cur.execute(sql_select,(_,))
+                sql = 'SELECT * FROM group_chat_history  WHERE target_group=%s'
+                self.cur.execute(sql,(_,))
                 msgs += list(self.cur.fetchall()[-5:])
         return msgs
 
-    def get_chat_list(self,user):
-        sql_select = 'SELECT username2 FROM friends where username1=%s'
-        self.cur.execute(sql_select,(user,))
+    def get_chat_list(self,user: str) -> tuple[list[str],list[str]]:
+        sql = 'SELECT username2 FROM friends WHERE username1=%s'
+        self.cur.execute(sql,(user,))
         friends = [_[0] for _ in self.cur.fetchall()]
-        sql_select = 'SELECT group_name FROM group_members where group_member=%s'
-        self.cur.execute(sql_select,(user,))
+        sql = 'SELECT group_name FROM group_members WHERE group_member=%s'
+        self.cur.execute(sql,(user,))
         groups = [_[0] for _ in self.cur.fetchall()]
         return friends,groups
 
-    def get_group_members(self,group):
-        sql_select = f'SELECT group_member FROM group_members where group_name=%s'
-        self.cur.execute(sql_select,(group,))
+    def get_group_members(self,group: str) -> list:
+        sql = 'SELECT group_member FROM group_members WHERE group_name=%s'
+        self.cur.execute(sql,(group,))
         members = [_[0] for _ in self.cur.fetchall()]
         return members
+
+    def save_add(self,user: str,model: int,target: str) -> None:
+        if model == 1:
+            sql = 'SELECT COUNT(*) FROM add_friend_requests WHERE (source=%s AND target=%s) LIMIT 1'
+            self.cur.execute(sql,(user,target,))
+            is_exist = bool(self.cur.fetchall()[0][0])
+            sql = 'SELECT COUNT(*) FROM group_members WHERE (group_name=%s AND group_member=%s) LIMIT 1'
+            self.cur.execute(sql,(target,user,))
+            is_exist = is_exist and bool(self.cur.fetchall()[0][0])
+
+            if not is_exist:
+                sql = 'INSERT INTO add_friend_requests (source, target) VALUES (%s,%s)'
+                self.cur.execute(sql,(user,target,))
+                self.conn.commit()
+        elif model == 0:
+            sql = 'SELECT COUNT(*) FROM add_group_requests WHERE (source=%s AND target=%s) LIMIT 1'
+            self.cur.execute(sql,(user,target,))
+            is_exist = bool(self.cur.fetchall()[0][0])
+            if not is_exist:
+                sql = 'INSERT INTO add_group_requests (source, target) VALUES (%s,%s)'
+                self.cur.execute(sql, (user, target,))
+                self.conn.commit()
+    def get_add_request(self,user: str) -> list[list[str],list[str],list[str],list[str]]:
+        sql = 'SELECT target FROM add_friend_requests WHERE source=%s'
+        self.cur.execute(sql,(user,))
+        my_friend_requests = [_[0] for _ in self.cur.fetchall()[-5:]]
+        sql = 'SELECT target FROM add_group_requests WHERE source=%s'
+        self.cur.execute(sql, (user,))
+        my_group_requests = [_[0] for _ in self.cur.fetchall()[-5:]]
+
+        sql = 'SELECT source FROM add_friend_requests WHERE target=%s'
+        self.cur.execute(sql,(user,))
+        friends = [_[0] for _ in self.cur.fetchall()]
+        sql = ('SELECT b.source,target FROM groupinfo a '
+                      'JOIN add_group_requests b ON a.group_name = b.target '
+                      'WHERE a.manager=%s')
+        self.cur.execute(sql,(user,))
+        groups = [_ for _ in self.cur.fetchall()]
+        return [my_friend_requests,my_group_requests,friends,groups]
+
+    def deal_response(self,model: bool,user: str,target: str,res: int) -> None:
+        if model:
+            source, group_name = target
+            if res:
+                sql = 'INSERT INTO group_members (group_name, group_member) VALUES (%s,%s)'
+                self.cur.execute(sql,(group_name,source,))
+            sql = 'DELETE FROM add_group_requests WHERE (source=%s AND target=%s)'
+            self.cur.execute(sql,(source,group_name,))
+        else:
+            if res:
+                sql = 'INSERT INTO friends (username1,username2) VALUES (%s,%s)'
+                self.cur.execute(sql,(user,target,))
+                self.cur.execute(sql,(target,user,))
+            sql = 'DELETE FROM add_friend_requests WHERE (source=%s AND target=%s)'
+            self.cur.execute(sql,(target,user))
+        self.conn.commit()
+
+    def search(self,target: str) -> tuple[str, str]:
+        sql = 'SELECT username FROM userinfo WHERE username=%s LIMIT 1'
+        self.cur.execute(sql,(target,))
+        res = self.cur.fetchall()
+        user = res[0][0] if len(res)==1 else None
+        sql = 'SELECT group_name FROM groupinfo WHERE group_name=%s LIMIT 1'
+        self.cur.execute(sql,(target,))
+        res = self.cur.fetchall()
+        group = res[0][0] if len(res)==1 else None
+        return user,group
