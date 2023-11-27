@@ -54,3 +54,7 @@ class RegisterGui(tk.Toplevel):
     @staticmethod
     def time_out():
         tkinter.messagebox.showerror('Error', '连接服务器超时请重试')
+
+    @staticmethod
+    def invalid_name():
+        tkinter.messagebox.showerror('Error','用户名包含非法字符')
