@@ -2,9 +2,6 @@ import json
 import tkinter as tk
 from tkinter import ttk
 
-def search():
-    #TODO 搜索好友
-    pass
 class AddGui(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -18,6 +15,8 @@ class AddGui(tk.Tk):
         self.addfri_Button = tk.Button()
         self.addgroup_Button = tk.Button()
         self.request_list = ttk.Treeview()
+        self.my_fir_request = None
+        self.my_group_request = None
         self.friend_tree = None
         self.group_tree = None
         self.run()
@@ -28,15 +27,15 @@ class AddGui(tk.Tk):
         self.search_Text = tk.Text(self)
         self.search_Text.place(x=80,y=0,height=30,width=200)
 
-        self.search_Button = tk.Button(self,text="搜索",command=search)
+        self.search_Button = tk.Button(self,text="搜索")
         self.search_Button.place(x=300,y=0)
 
         tk.Canvas(self,width=350,height=50,bg='white').place(x=0,y=60)
 
-        self.friend = tk.Label(self,text="admin")
+        self.friend = tk.Label(self,text="")
         self.friend.place(x=50,y=62)
         ttk.Separator(self, orient='horizontal').place(x=0,y=87,width=350)
-        self.group = tk.Label(self,text="group")
+        self.group = tk.Label(self,text="")
         self.group.place(x=50,y=88)
 
         self.addfri_Button = tk.Button(self,text='添加好友')
@@ -52,32 +51,11 @@ class AddGui(tk.Tk):
         self.request_list.place(x=80, y=180)
 
         # 好友分组
-        self.friend_tree = self.request_list.insert('', 0, 'friends', text='好友', )
-        self.group_tree = self.request_list.insert('', 1, 'groups', text='群聊', )
+        my_request_tree = self.request_list.insert('','end','my_request',text='我的请求')
+        self.my_fir_request = self.request_list.insert(my_request_tree,'end','my_friend',text='好友')
+        self.my_group_request = self.request_list.insert(my_request_tree,'end','my_group',text='群聊')
+        self.friend_tree = self.request_list.insert('', 'end', 'friends', text='好友', )
+        self.group_tree = self.request_list.insert('', 'end', 'groups', text='群聊', )
 
         self.request_list.item('friends',open=True)
         self.request_list.item('groups',open=True)
-        self.request_list.bind("<Double-Button-1>", self.mouse_clicked)
-        self.add_requests(['admin'], ['public'])
-
-    def add_requests(self,friends: list[str],groups: list[str]) -> None:
-        def add_choice(node: str, target: str) -> None:
-            self.request_list.insert(node, 'end', iid=f'{target} 1', text='同意')
-            self.request_list.insert(node, 'end', iid=f'{target} 0', text='拒绝')
-
-        for _ in friends:
-            friend = self.request_list.insert(self.friend_tree,'end',text=_)
-            add_choice(friend,_)
-        for _ in groups:
-            group = self.request_list.insert(self.group_tree,'end',text=_)
-            add_choice(group,_)
-
-    def mouse_clicked(self,event):
-        items = self.request_list.selection()[0].split(' ',1)
-        print(items)
-
-if __name__ == "__main__":
-    page = AddGui()
-
-
-    page.mainloop()
