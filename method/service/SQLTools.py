@@ -85,14 +85,14 @@ DBS = {
 class SQL_Operate:
     """服务端的数据库操作方法集合
 
-    提供了关于用户注册、登录、消息发送、好友添加查找、好友列表获取等函数
+    提供了对于实现用户注册、登录、消息发送、好友添加查找、好友列表获取功能等函数
     
     Attributes:
-        mysql_host: 数据库运行地址(默认为localhost)
-        mysql_port: 数据库运行端口(默认为3306)
-        mysql_db: 数据库名称
-        mysql_user: 数据库账号(PS:这里仅提供示例账户root不建议实际使用)
-        mysql_pwd: 数据库密码(PS:此处仅提供示例建议使用高强度密码)
+        self.mysql_host: 数据库运行地址(默认为localhost)
+        self.mysql_port: 数据库运行端口(默认为3306)
+        self.mysql_db: 数据库名称
+        self.mysql_user: 数据库账号(PS:这里仅提供示例账户root不建议实际使用)
+        self.mysql_pwd: 数据库密码(PS:此处仅提供示例建议使用高强度密码)
         System: 聊天程序系统用户
         System_pwd: 聊天程序系统用户密码(以md5格式保存到数据库中)
         conn: 数据库连接对象
