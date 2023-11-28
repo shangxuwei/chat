@@ -59,3 +59,7 @@ class AddGui(tk.Tk):
 
         self.request_list.item('friends',open=True)
         self.request_list.item('groups',open=True)
+
+if __name__ == '__main__':
+    page = AddGui()
+    page.mainloop()

@@ -31,6 +31,8 @@ class Client:
         self.chat_group_list = '' # 群组列表
 
         self.search_text:tk.Text = None # 搜索框
+        self.friend: tk.Label = None
+        self.group: tk.Label = None
         self.request_list: ttk.Treeview = None # 请求列表
         self.my_fri_requests = '' # 我发送的请求
         self.my_group_requests = ''
@@ -109,8 +111,9 @@ class Client:
                 'ERROR': [self.error,None],
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,date,user,payload],
-                'CHAT_LIST':[self.update_chat_list,payload],
-                'ADD_REQUESTS':[self.update_requests_list,payload],
+                'CHAT_LIST': [self.update_chat_list,payload],
+                'ADD_RESPONSE': [self.update_requests_list,payload],
+                'SEARCH_RESPONSE': [self.response_search,payload],
                 'HISTORY':[self.history,user,payload]
             }
             method[header][0](*(method[header][1:]))
@@ -260,7 +263,7 @@ class Client:
     def search(self,target):
         self.send('SEARCH',target)
 
-    def response_search(self):
+    def response_search(self,payload):
         pass
 
     def upload(self):

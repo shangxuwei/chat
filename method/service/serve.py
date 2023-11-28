@@ -158,7 +158,7 @@ class Service:
     @logged_in
     def get_add_request(self,user: str,address: tuple) -> None:
         requests = self.SQL_obj.get_add_request(user)
-        payload = f'ADD_REQUESTS\n\n \n\n \n\n{json.dumps(requests)}'
+        payload = f'ADD_RESPONSE\n\n \n\n \n\n{json.dumps(requests)}'
         self.sock.sendto(payload.encode('utf-8'),address)
 
     @logged_in
@@ -200,8 +200,7 @@ class Service:
     @logged_in
     def search(self,user,target):
         res = self.SQL_obj.search(target)
-        # TODO:回复搜索结果
-        self.sock.sendto()
+        self.sock.sendto('')
 
     @logged_in
     def upload(self,user):
