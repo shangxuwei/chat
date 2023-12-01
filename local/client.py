@@ -4,11 +4,9 @@ from threading import Thread
 import tkinter as tk
 from tkinter import ttk
 import json
-from typing import *
 import hashlib
-from method.local import SqliteTools
+from local import SqliteTools
 from concurrent.futures import ThreadPoolExecutor
-import traceback
 import tkinter.messagebox
 
 
@@ -31,8 +29,10 @@ class Client:
         self.chat_group_list = '' # 群组列表
 
         self.search_text:tk.Text = None # 搜索框
-        self.friend: tk.Label = None
-        self.group: tk.Label = None
+        self.res_friend: tk.Label = None # 用户搜索结果
+        self.res_group: tk.Label = None # 群组搜索结果
+        self.add_fri_Btn: tk.Button = None # 添加好友按钮
+        self.add_group_Btn: tk.Button = None # 添加群聊按钮
         self.request_list: ttk.Treeview = None # 请求列表
         self.my_fri_requests = '' # 我发送的请求
         self.my_group_requests = ''
@@ -41,12 +41,12 @@ class Client:
 
         self.chat_page = []
 
-        self.Sql_obj = None
+        self.Sql_obj:SqliteTools.SqlTools = None
 
     @staticmethod
     def sql_operate(func):
         def init(self,*args):
-            self.Sql_obj = SqliteTools.SqlTools(self.user,model='run')
+            self.Sql_obj = SqliteTools.SqlTools(self.user, model='run')
             try:
                 func(self,*args)
             finally:
@@ -78,7 +78,7 @@ class Client:
                 keep = Thread(target=self.keep)
                 keep.daemon = True
                 keep.start()
-                self.Sql_obj = SqliteTools.SqlTools(self.user,model='init')
+                self.Sql_obj = SqliteTools.SqlTools(self.user, model='init')
             return int(data)
         except:
             return 2
@@ -108,23 +108,14 @@ class Client:
                 'MESSAGE': [self.message,date,user,payload],
                 'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
-                'ERROR': [self.error,None],
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,date,user,payload],
-                'CHAT_LIST': [self.update_chat_list,payload],
+                'CHAT_LIST': [self.save_chat_list,payload],
                 'ADD_RESPONSE': [self.update_requests_list,payload],
-                'SEARCH_RESPONSE': [self.response_search,payload],
+                'SEARCH_RESPONSE': [self.search_response,payload],
                 'HISTORY':[self.history,user,payload]
             }
             method[header][0](*(method[header][1:]))
-
-    @sql_operate
-    def switch_chat(self, model: int, target: str) -> None:
-        self.chat_page=[model, target]
-        msgs = self.Sql_obj.get_msg(model,target)
-        for msg in msgs:
-            self.insert_message(msg[2],msg[4],msg[5])
-
 
     def get_history(self):
         self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
@@ -141,7 +132,7 @@ class Client:
         self.messagebox.configure(state='normal')
         if user == self.user:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
-        if user == 'system':
+        elif user == 'system':
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','system')
         else:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','other')
@@ -156,9 +147,9 @@ class Client:
         t = time.localtime(float(date))
         date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         if source_user != self.user and target[0] == 1:
-            self.Sql_obj.insert_msg(target[0], date, source_user, source_user, msg)
+            self.Sql_obj.save_msg(target[0], date, source_user, source_user, msg)
         else:
-            self.Sql_obj.insert_msg(target[0], date, target[1], source_user, msg)
+            self.Sql_obj.save_msg(target[0], date, target[1], source_user, msg)
         if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == source_user):
             self.insert_message(date,source_user,msg)
 
@@ -166,11 +157,11 @@ class Client:
     def history(self,model,payload):
         if model == '0':
             msg = json.loads(payload)
-            self.Sql_obj.insert_msg(*msg)
+            self.Sql_obj.save_msg(*msg)
         elif model == '1':
             msg = json.loads(payload)
             page = msg[1] if msg[1] != self.user else msg[2]
-            self.Sql_obj.insert_msg(int(model),msg[3],page,msg[2],msg[4])
+            self.Sql_obj.save_msg(int(model), msg[3], page, msg[2], msg[4])
         elif model == '2':
             self.switch_chat(1,'system')
             tkinter.messagebox.showinfo(title='esaychat:system',message='历史记录同步完成')
@@ -197,14 +188,13 @@ class Client:
                 tkinter.messagebox.showerror(title=head,message='connect timeout')
         self.message_pool.submit(send_message,header,payload)
 
-
     def ack(self, header: str, date: str, user: str) -> None:
         try:
             self.ackpool.remove(hash(f'{header}{date}{user}'))
         except:
             pass
 
-    def ack_check(self, flag: int):
+    def ack_check(self, flag: int) -> bool:
         if flag in self.ackpool:
             return True
         return False
@@ -218,19 +208,16 @@ class Client:
         header = 'GET_CHATS'
         self.send(header,' ')
 
-    def update_chat_list(self,payload):
+    @sql_operate
+    def save_chat_list(self,payload):
         friends = json.loads(payload)[0]
         groups = json.loads(payload)[1]
+        self.Sql_obj.save_chats(1,friends)
+        self.Sql_obj.save_chats(0,groups)
         for _ in friends:
-            try:
                 self.chat_list.insert(self.chat_fir_list, index='end', tags=[json.dumps([1,_])], text=_)
-            except:
-                pass
         for _ in groups:
-            try:
                 self.chat_list.insert(self.chat_group_list, index='end', tags=[json.dumps([0,_])], text=_)
-            except:
-                pass
 
     def get_requests_list(self):
         self.send('GET_ADD_REQUEST','')
@@ -241,9 +228,12 @@ class Client:
             return f'{text[0]} -> {text[1]}'
         return text
 
+    @sql_operate
     def update_requests_list(self,payload: str):
         requests = json.loads(payload)
         trees = [self.my_fri_requests, self.my_group_requests, self.fri_requests, self.group_requests]
+        self.Sql_obj.save_add_requests(1,requests[0])
+        self.Sql_obj.save_add_requests(0,requests[1])
         for reqs,tree in zip(requests,trees):
             for _ in reqs:
                 node = self.request_list.insert(tree,'end',_,text=self.format_request(_))
@@ -251,27 +241,82 @@ class Client:
                     self.request_list.insert(node, 'end', tags=[json.dumps([_,1])], text='同意')
                     self.request_list.insert(node, 'end', tags=[json.dumps([_,0])], text='拒绝')
 
-    def respond_request(self,target: str | list,res: int,iid: str) -> None:
+    def handle_add_request(self, target: str | list, res: int) -> None:
+        """回复好友请求
+
+        Args:
+            target: 一个字符串或者列表，字符串表示用户名，列表则为[用户名，群聊]
+            res: 一个整数，1为同意，0为拒绝
+
+        Returns:
+            None
+        """
         if res == 1:
-            if isinstance(target,list):
-                self.update_chat_list(json.dumps(([],[target[1]])))
-            else:
-                self.update_chat_list(json.dumps(([target],[])))
-        self.request_list.delete(iid)
+            if isinstance(target,str):
+                self.save_chat_list(json.dumps(([target],[])))
         self.send('REPLY_REQUEST',json.dumps([target,res]))
 
-    def search(self,target):
+    def search(self,target: str) -> None:
+        """发起搜索请求
+
+        Args:
+            target: 搜索目标用户名
+
+        Returns:
+            None
+        """
         self.send('SEARCH',target)
 
-    def response_search(self,payload):
-        pass
+    @sql_operate
+    def search_response(self,payload: str) -> None:
+        """响应搜索请求，在addfriend_page页面label处显示结果
+
+        Args:
+            payload: 一个字符串，表示搜索结果，类型为json.dumps([user,group])
+
+        Returns:
+            None
+        """
+        user, group = json.loads(payload)
+        self.res_friend.configure(text=str(user),fg=('green' if user is not None else 'red'))
+        self.res_group.configure(text=str(group),fg=('green' if group is not None else 'red'))
+        if user is None:
+            self.add_fri_Btn.configure(text='用户不存在')
+        elif user == self.user or self.Sql_obj.friend_is_exist(user):
+            self.add_fri_Btn.configure(text='好友已存在')
+        elif self.Sql_obj.fir_request_is_exist(user):
+            self.add_fri_Btn.configure(text='已发送请求')
+        else:
+            self.add_fri_Btn.configure(state='normal',text='添加好友')
+        if group is None:
+            self.add_group_Btn.configure(state='normal',text='创建群聊')
+            # TODO:新建群聊
+        elif self.Sql_obj.group_is_exist(group):
+            self.add_group_Btn.configure(text='已在群聊中')
+        elif self.Sql_obj.group_request_is_exist(group):
+            self.add_group_Btn.configure(text='请求已发送')
+        else:
+            self.add_group_Btn.configure(state='normal',text='添加群聊')
+
+    @sql_operate
+    def add_request(self,model:int ,target: str) -> None:
+        header = 'ADD'
+        payload = json.dumps([model,target])
+        self.send(header,payload)
+        self.Sql_obj.save_add_request(model,target)
+        self.request_list.insert(self.my_fri_requests if model else self.my_group_requests,'end',text=target)
 
     def upload(self):
+        # TODO:上传文件
         pass
 
     def download(self):
+        # TODO:下载文件
         pass
 
-    def error(self):
-        pass
-
+    @sql_operate
+    def switch_chat(self, model: int, target: str) -> None:
+        self.chat_page=[model, target]
+        msgs = self.Sql_obj.get_msg(model,target)
+        for msg in msgs:
+            self.insert_message(msg[2],msg[4],msg[5])
