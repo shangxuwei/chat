@@ -1,7 +1,5 @@
 import socket
-import sys
 import threading
-import trace
 import time
 import traceback
 import SQLTools
@@ -46,16 +44,16 @@ class Service:
                 method = {
                     'LOGIN': [self.login, user, address, payload], # 登录
                     'REGISTER': [self.register, user, address, payload], # 注册
-                    'MESSAGE': [self.message, user, date, payload], # 消息接收
-                    'GET_MESSAGE_HISTORY': [self.get_msg,user,address], # 获取历史消息
-                    'ADD':[self.add_request,user,payload], # 添加好友
-                    'GET_ADD_REQUEST':[self.get_add_request,user,address], # 获取好友请求
-                    'REPLY_REQUEST':[self.get_reply,user,payload,address], # 回复好友请求
+                    'MESSAGE': [self.save_message, user, date, payload], # 消息接收
+                    'GET_MESSAGE_HISTORY': [self.get_msg,user], # 获取历史消息
+                    'ADD':[self.save_add_request,user,payload], # 添加好友
+                    'GET_ADD_REQUEST':[self.get_add_request,user], # 获取好友请求
+                    'REPLY_REQUEST':[self.handle_add_request,user,payload], # 回复好友请求
                     'SEARCH':[self.search,user,payload], # 搜索用户/群聊
                     'UPLOAD': [self.upload, user], # 上传文件
                     'DOWNLOAD': [self.download, user], # 下载文件
                     'ONLINE': [self.online, user, address], # 在线心跳信息
-                    'GET_CHATS':[self.get_chats,user,address], # 获取历史消息
+                    'GET_CHATS':[self.get_chats,user], # 获取历史消息
                     'LOGOUT':[self.logout, user, address] # 下线
                 }
                 method[header][0](*(method[header][1:]))
@@ -115,7 +113,7 @@ class Service:
         self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'), address)
 
     @logged_in
-    def message(self, user: str, date: float, payload: str) -> None:
+    def save_message(self, user: str, date: float, payload: str) -> None:
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         model = target[0] # is私聊
@@ -132,8 +130,9 @@ class Service:
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
     @logged_in
-    def get_msg(self,user: str,address: tuple) -> None:
+    def get_msg(self,user: str) -> None:
         msgs = self.SQL_obj.get_msg(1,user)
+        address = self.ip_pool[user]
         for msg in msgs:
             msg = list(msg[:3]) + [msg[3].strftime('%Y-%m-%d %H:%M:%S')] + list(msg[4:])
             self.sock.sendto(('HISTORY\n\n\n\n1\n\n'+json.dumps(msg)).encode('utf-8'),address)
@@ -145,24 +144,24 @@ class Service:
         self.sock.sendto('HISTORY\n\n\n\n2\n\n'.encode('utf-8'),address)
 
     @logged_in
-    def get_chats(self,user: str,address: tuple) -> None:
+    def get_chats(self,user: str) -> None:
         chat_list = self.SQL_obj.get_chat_list(user)
         payload = f'CHAT_LIST\n\n \n\n \n\n{json.dumps(chat_list)}'
-        self.sock.sendto(payload.encode('utf-8'),address)
+        self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
-    def add_request(self,user: str,payload: str) -> None:
+    def save_add_request(self,user: str,payload: str) -> None:
         model, target = json.loads(payload)
         self.SQL_obj.save_add(user, model, target)
 
     @logged_in
-    def get_add_request(self,user: str,address: tuple) -> None:
+    def get_add_request(self,user: str) -> None:
         requests = self.SQL_obj.get_add_request(user)
         payload = f'ADD_RESPONSE\n\n \n\n \n\n{json.dumps(requests)}'
-        self.sock.sendto(payload.encode('utf-8'),address)
+        self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
-    def get_reply(self,user,payload,address):
+    def handle_add_request(self,user,payload):
         response, res = json.loads(payload)
         model = isinstance(response,list)
         target = [1,'system']
@@ -190,7 +189,7 @@ class Service:
                 msg1 = f'你已拒绝{source_user}的好友申请'
                 msg2 = f'{user}拒绝了你的好友申请'
         if user in self.ip_pool:
-            self.sock.sendto(f"MESSAGE\n\n{date}\n\nsystem\n\n{json.dumps(target)}\n{msg1}".encode('utf-8'),address)
+            self.sock.sendto(f"MESSAGE\n\n{date}\n\nsystem\n\n{json.dumps(target)}\n{msg1}".encode('utf-8'),self.ip_pool[user])
         if source_user in self.ip_pool:
             self.sock.sendto(f"MESSAGE\n\n{date}\n\nsystem\n\n{json.dumps(target)}\n{msg2}".encode('utf-8'),self.ip_pool[source_user])
         self.SQL_obj.save_msg(date,'system',1,user,msg1)
@@ -198,9 +197,19 @@ class Service:
         self.SQL_obj.deal_response(model,user,response,res)
 
     @logged_in
-    def search(self,user,target):
+    def search(self,user: str,target: str):
+        """从数据库中获取与target对应的用户和群聊
+
+        Args:
+            user: 发起请求的用户
+            target: 搜索目标用户名
+
+        Returns:
+            None
+
+        """
         res = self.SQL_obj.search(target)
-        self.sock.sendto('')
+        self.sock.sendto(f'SEARCH_RESPONSE\n\n \n\n \n\n{json.dumps(res)}'.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
     def upload(self,user):
