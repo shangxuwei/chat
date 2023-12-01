@@ -17,7 +17,6 @@ class ChatGui(tk.Tk):
         self.btn_addfri = tk.Button
         self.chat_list = ttk.Treeview()
         self.chat_page = tk.StringVar()
-        self.chat_page.set('public')
         self.fri_list = ''
         self.group_list = ''
         self.run()
@@ -62,8 +61,9 @@ class ChatGui(tk.Tk):
         self.chat_list.place(x=850, y=30)
         s2.config(command=self.chat_list.yview)
         # 好友分组
-        self.fri_list = self.chat_list.insert('', 1, 'second', text='好友', )
-        self.group_list = self.chat_list.insert('', 2, 'third', text='群聊', )
+        self.chat_list.insert('', index='end', tags=[json.dumps([1, 'system'])], text='system')
+        self.fri_list = self.chat_list.insert('', 1, 'friends', text='好友', )
+        self.group_list = self.chat_list.insert('', 2, 'groups', text='群聊', )
 
     def get_msg(self,date: str,user: str,message: str):
         self.msg.configure(state='normal')
