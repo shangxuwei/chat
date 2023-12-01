@@ -93,10 +93,10 @@ class SQL_Operate:
         self.mysql_db: 数据库名称
         self.mysql_user: 数据库账号(PS:这里仅提供示例账户root不建议实际使用)
         self.mysql_pwd: 数据库密码(PS:此处仅提供示例建议使用高强度密码)
-        System: 聊天程序系统用户
-        System_pwd: 聊天程序系统用户密码(以md5格式保存到数据库中)
-        conn: 数据库连接对象
-        cur: 数据库连接对象游标
+        self.System: 聊天程序系统用户
+        self.System_pwd: 聊天程序系统用户密码(以md5格式保存到数据库中)
+        self.conn: 数据库连接对象
+        self.cur: 数据库连接对象游标
     """
     def __init__(self):
         """初始化类对象"""
@@ -109,7 +109,6 @@ class SQL_Operate:
         self.System = 'system'
         self.System_pwd = 'aa123456bb'
         self.System_pwd=hashlib.md5(self.System_pwd.encode('utf-8')).hexdigest()
-
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
@@ -167,7 +166,7 @@ class SQL_Operate:
 
         Returns:
             一个整数表示登录校验是否通过
-            
+
             0: 用户登录失败
             1: 用户登录成功
         """
@@ -234,14 +233,16 @@ class SQL_Operate:
     def get_msg(self,model: int,target: str) -> list:
         """获取指定用户的历史消息
 
-        获取指定用户与其他用户及其在群聊中的历史消息，群聊消息仅获取每个群聊的最后五条，个人不限
+        获取指定用户与其他用户及群聊中的历史消息，群聊消息仅获取每个群聊的最后五条，个人不限
 
         Args:
             model: 获取消息模式标识，1表示私聊，0表示群聊
             target: 目标用户
 
         Returns:
-            返回一个列表包含指定用户的相关历史消息
+            返回一个列表包含指定目标的相关历史消息
+            Examples:
+                [(1, 'admin', 'system', datetime.datetime(2023, 12, 1, 20, 38, 33), 'Hello World'),....]
         """
         if model:
             sql = 'SELECT * FROM private_chat_history WHERE (target_user=%s or source_user=%s)'
