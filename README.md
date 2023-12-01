@@ -9,14 +9,10 @@ chat
 ├── Doc
 │    ├── Database.md
 │    └── Develpment.md
+├── local
+│    ├── client.py
+│    └── SqliteTools.py
 ├── main.py
-├── method
-│    ├── local
-│    │   ├── client.py
-│    │   └── SqliteTools.py
-│    └── service
-│       ├── serve.py
-│       └── SQLTools.py
 ├── page
 │    ├── addfriend_page.py
 │    ├── chat_page.py
@@ -24,7 +20,10 @@ chat
 │    ├── login_page.py
 │    └── register_page.py
 ├── README.md
-└── requirements.txt
+├── requirements.txt
+└── service
+    ├── serve.py
+    └── SQLTools.py
 ```
 
 
@@ -50,6 +49,6 @@ chat
 - [x] 用户登录
 - [x] 公共聊天室
 - [ ] 公共文件传输
-- [ ] 好友添加
+- [x] 好友添加
 - [x] 好友私聊
 
