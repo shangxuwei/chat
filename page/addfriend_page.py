@@ -23,7 +23,7 @@ class AddGui(tk.Tk):
         self.run()
 
     def run(self):
-        tk.Label(self,text='好友用户名').place(x=5,y=5)
+        tk.Label(self,text='好友/群聊名').place(x=5,y=5)
 
         self.search_Text = tk.Entry(self)
         self.search_Text.place(x=80,y=0,height=30,width=200)
