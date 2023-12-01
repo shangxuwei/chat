@@ -1,9 +1,7 @@
 import json
 import tkinter as tk
-import traceback
-from threading import Thread
 import time
-from method.local import client
+from local import client
 from page import login_page,register_page,chat_page,addfriend_page
 import os
 import atexit
@@ -124,20 +122,37 @@ def run_add_page():
     tools.fri_requests = page_add.friend_tree
     tools.group_requests = page_add.group_tree
     tools.search_text = page_add.search_Text
+    tools.res_friend = page_add.friend
+    tools.res_group = page_add.group
+    tools.add_fri_Btn = page_add.addfri_Button
+    tools.add_group_Btn = page_add.addgroup_Button
 
     tools.get_requests_list()
     def search():
         target = page_add.search_Text.get()
-        friend, group = tools.search(target)
+        tools.search(target)
     page_add.search_Button.configure(command=search)
+
+    def add_friend():
+        target = page_add.friend.cget("text")
+        tools.add_request(1,target)
+        page_add.sent_request('添加好友')
+    page_add.addfri_Button.configure(command=add_friend)
+
+    def add_group():
+        target = page_add.group.cget("text")
+        tools.add_request(0,target)
+        page_add.sent_request('添加群聊')
+    page_add.addgroup_Button.configure(command=add_group)
+
     def mouse_clicked(event):
         items = page_add.request_list.selection()[0]
         parent = page_add.request_list.parent(items)
         values = page_add.request_list.item(items)
         try:
             target, res = json.loads(values['tags'][0])
-            tools.respond_request(target,res,parent)
-            print(type(values['tags']), json.loads(values['tags'][-1]))
+            tools.handle_add_request(target, res)
+            tools.request_list.delete(parent)
         except IndexError:
             pass
     page_add.request_list.bind("<Double-Button-1>", mouse_clicked)
