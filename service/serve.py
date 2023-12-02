@@ -1,5 +1,6 @@
 import socket
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 import traceback
 import SQLTools
@@ -19,6 +20,8 @@ class Service:
         self.sessions = {}
         self.SQL_obj = SQLTools.SQL_Operate()
         self.ack_life = []
+
+        self.thread_pool = ThreadPoolExecutor(max_workers=5)
 
 
     @staticmethod
@@ -45,18 +48,19 @@ class Service:
                     'LOGIN': [self.login, user, address, payload], # 登录
                     'REGISTER': [self.register, user, address, payload], # 注册
                     'MESSAGE': [self.save_message, user, date, payload], # 消息接收
-                    'GET_MESSAGE_HISTORY': [self.get_msg,user], # 获取历史消息
-                    'ADD':[self.save_add_request,user,payload], # 添加好友
-                    'GET_ADD_REQUEST':[self.get_add_request,user], # 获取好友请求
-                    'REPLY_REQUEST':[self.handle_add_request,user,payload], # 回复好友请求
-                    'SEARCH':[self.search,user,payload], # 搜索用户/群聊
+                    'GET_MESSAGE_HISTORY': [self.get_msg, user], # 获取历史消息
+                    'ADD': [self.save_add_request, user, payload], # 添加好友
+                    'GET_ADD_REQUEST': [self.get_add_request, user], # 获取好友请求
+                    'REPLY_REQUEST': [self.handle_add_request, user, payload], # 回复好友请求
+                    'SEARCH': [self.search, user, payload], # 搜索用户/群聊
+                    'NEW_GROUP': [self.new_group, user, payload], # 新建群聊
                     'UPLOAD': [self.upload, user], # 上传文件
                     'DOWNLOAD': [self.download, user], # 下载文件
                     'ONLINE': [self.online, user, address], # 在线心跳信息
-                    'GET_CHATS':[self.get_chats,user], # 获取历史消息
-                    'LOGOUT':[self.logout, user, address] # 下线
+                    'GET_CHATS': [self.get_chats, user], # 获取历史消息
+                    'LOGOUT': [self.logout, user, address] # 下线
                 }
-                method[header][0](*(method[header][1:]))
+                self.thread_pool.submit(method[header][0],*(method[header][1:]))
             except ConnectionResetError:
                 print(self.ip_pool)
             except KeyboardInterrupt:
@@ -212,11 +216,17 @@ class Service:
         self.sock.sendto(f'SEARCH_RESPONSE\n\n \n\n \n\n{json.dumps(res)}'.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
+    def new_group(self,user,groupname):
+        self.SQL_obj.new_group(user,groupname)
+
+    @logged_in
     def upload(self,user):
+        # TODO: 上传文件
         pass
 
     @logged_in
     def download(self,user):
+        # TODO: 下载文件
         pass
 
 if __name__ == "__main__":
