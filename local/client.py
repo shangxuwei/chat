@@ -277,34 +277,58 @@ class Client:
         Returns:
             None
         """
-        user, group = json.loads(payload)
-        self.res_friend.configure(text=str(user),fg=('green' if user is not None else 'red'))
-        self.res_group.configure(text=str(group),fg=('green' if group is not None else 'red'))
-        if user is None:
+        name, user_exist, group_exist = json.loads(payload)
+        self.res_friend.configure(text=name,fg=('green' if user_exist else 'red'))
+        self.res_group.configure(text=name,fg=('green' if group_exist else 'red'))
+        if not user_exist:
             self.add_fri_Btn.configure(text='用户不存在')
-        elif user == self.user or self.Sql_obj.friend_is_exist(user):
+        elif name == self.user or self.Sql_obj.friend_is_exist(user_exist):
             self.add_fri_Btn.configure(text='好友已存在')
-        elif self.Sql_obj.fir_request_is_exist(user):
+        elif self.Sql_obj.fir_request_is_exist(name):
             self.add_fri_Btn.configure(text='已发送请求')
         else:
             self.add_fri_Btn.configure(state='normal',text='添加好友')
-        if group is None:
+        if not group_exist:
             self.add_group_Btn.configure(state='normal',text='创建群聊')
-            # TODO:新建群聊
-        elif self.Sql_obj.group_is_exist(group):
+        elif self.Sql_obj.group_is_exist(name):
             self.add_group_Btn.configure(text='已在群聊中')
-        elif self.Sql_obj.group_request_is_exist(group):
+        elif self.Sql_obj.group_request_is_exist(name):
             self.add_group_Btn.configure(text='请求已发送')
         else:
             self.add_group_Btn.configure(state='normal',text='添加群聊')
 
     @sql_operate
     def add_request(self,model:int ,target: str) -> None:
+        """发起添加好友/群聊请求
+
+        Args:
+            model: 一个整数表示添加好友或群聊，1添加好友，0添加群聊
+            target: 一个字符串表示目标名称
+
+        Returns:
+            None
+        """
         header = 'ADD'
         payload = json.dumps([model,target])
         self.send(header,payload)
         self.Sql_obj.save_add_request(model,target)
         self.request_list.insert(self.my_fri_requests if model else self.my_group_requests,'end',text=target)
+
+    @sql_operate
+    def new_group(self, groupname: str) -> None:
+        """发起新建群聊请求
+
+        Args:
+            groupname: 群聊名称
+
+        Returns:
+            None
+        """
+        self.send('NEW_GROUP',groupname)
+        self.Sql_obj.save_chat(0,groupname)
+        self.request_list.insert(self.my_fri_requests,'end',text=groupname)
+        self.save_chat_list(json.dumps([[],[groupname]]))
+        tkinter.messagebox.showinfo('新建群聊','新建群聊成功')
 
     def upload(self):
         # TODO:上传文件
