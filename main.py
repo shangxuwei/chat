@@ -115,7 +115,7 @@ def run_chat():
 
 def run_add_page():
     page_add=addfriend_page.AddGui()
-
+    page_add.title(f'添加好友:{tools.user}')
     tools.request_list = page_add.request_list
     tools.my_fri_requests = page_add.my_fir_request
     tools.my_group_requests = page_add.my_group_request
@@ -137,12 +137,17 @@ def run_add_page():
         target = page_add.friend.cget("text")
         tools.add_request(1,target)
         page_add.sent_request('添加好友')
+        page_add.addfri_Button.configure(state='disabled')
     page_add.addfri_Button.configure(command=add_friend)
 
     def add_group():
         target = page_add.group.cget("text")
-        tools.add_request(0,target)
-        page_add.sent_request('添加群聊')
+        if page_add.addgroup_Button.cget("text") == '创建群聊':
+            tools.new_group(target)
+        else:
+            tools.add_request(0,target)
+            page_add.sent_request('添加群聊')
+        page_add.addgroup_Button.configure(state='disabled')
     page_add.addgroup_Button.configure(command=add_group)
 
     def mouse_clicked(event):
