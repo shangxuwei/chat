@@ -375,21 +375,37 @@ class SQL_Operate:
             self.cur.execute(sql,(target,user))
         self.conn.commit()
 
-    def search(self,target: str) -> tuple[str, str]:
+    def search(self,target: str) -> tuple[str, bool, bool]:
         """搜索用户/群聊
         
         Args:
             target: 目标字符串，群聊名称及用户名称
 
         Returns:
-            返回一个元组包含两个元素，依次为匹配的用户名称，群聊名称，若未找到则对应名称值为None
+            返回一个元组包含两个元素，依次为匹配的用户名称，群聊名称，若找到则对应名称值为True未找到为False
         """
         sql = 'SELECT username FROM userinfo WHERE username=%s LIMIT 1'
         self.cur.execute(sql,(target,))
         res = self.cur.fetchall()
-        user = res[0][0] if len(res)==1 else None
+        user = True if len(res)==1 else False
         sql = 'SELECT group_name FROM groupinfo WHERE group_name=%s LIMIT 1'
         self.cur.execute(sql,(target,))
         res = self.cur.fetchall()
-        group = res[0][0] if len(res)==1 else None
-        return user,group
+        group = True if len(res)==1 else False
+        return target,user,group
+
+    def new_group(self,manager: str, groupname: str) -> None:
+        """新建群聊
+
+        Args:
+            manager: 群聊管理员
+            groupname: 群聊名称
+
+        Returns:
+            None
+        """
+        sql = 'INSERT INTO groupinfo (group_name, manager) VALUES (%s,%s)'
+        self.cur.execute(sql,(groupname,manager,))
+        sql = 'INSERT INTO group_members (group_name, group_member) VALUES (%s,%s)'
+        self.cur.execute(sql,(groupname,manager,))
+        self.conn.commit()
