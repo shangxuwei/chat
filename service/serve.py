@@ -1,3 +1,4 @@
+import concurrent
 import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -22,7 +23,17 @@ class Service:
         self.ack_life = []
 
         self.thread_pool = ThreadPoolExecutor(max_workers=5)
+        self.pool =[]
 
+    @staticmethod
+    def sql_operate(func):
+        def wrap(self,*args):
+            self.SQL_obj = SQLTools.SQL_Operate()
+            func(self,*args)
+            self.SQL_obj.cur.close()
+            self.SQL_obj.conn.close()
+            self.SQL_obj = None
+        return wrap
 
     @staticmethod
     def logged_in(func):
@@ -30,6 +41,12 @@ class Service:
             if args[0] in self.ip_pool:
                 return func(self,*args)
         return check
+    @staticmethod
+    def thread_pool_callback(worker):
+        logging.info("called thread pool executor callback function")
+        worker_exception = worker.exception()
+        if worker_exception:
+            logging.exception("Worker return exception: {}".format(worker_exception))
 
     def listen(self):
         print('开始监听')
@@ -60,7 +77,9 @@ class Service:
                     'GET_CHATS': [self.get_chats, user], # 获取历史消息
                     'LOGOUT': [self.logout, user, address] # 下线
                 }
-                self.thread_pool.submit(method[header][0],*(method[header][1:]))
+                task = self.thread_pool.submit(method[header][0],*(method[header][1:]))
+                task.add_done_callback(self.thread_pool_callback)
+                self.pool.append(task)
             except ConnectionResetError:
                 print(self.ip_pool)
             except KeyboardInterrupt:
@@ -79,6 +98,7 @@ class Service:
         time.sleep(2)
         self.ack_life.pop(0)
 
+    @sql_operate
     def login(self,user: str ,address: tuple ,payload: str) -> None:
         flag = self.SQL_obj.login_check(user,payload)
         if flag == 1:
@@ -86,6 +106,7 @@ class Service:
         self.sock.sendto(str(flag).encode("utf-8"),address)
         logging.info(f"address:{address} user:{user} res:{flag}")
 
+    @sql_operate
     def register(self,user: str,address: tuple,payload: str) -> None:
         flag = 3
         if self.check_username(user):
@@ -117,6 +138,7 @@ class Service:
         self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'), address)
 
     @logged_in
+    @sql_operate
     def save_message(self, user: str, date: float, payload: str) -> None:
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
@@ -134,6 +156,7 @@ class Service:
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
     @logged_in
+    @sql_operate
     def get_msg(self,user: str) -> None:
         msgs = self.SQL_obj.get_msg(1,user)
         address = self.ip_pool[user]
@@ -148,23 +171,27 @@ class Service:
         self.sock.sendto('HISTORY\n\n\n\n2\n\n'.encode('utf-8'),address)
 
     @logged_in
+    @sql_operate
     def get_chats(self,user: str) -> None:
         chat_list = self.SQL_obj.get_chat_list(user)
         payload = f'CHAT_LIST\n\n \n\n \n\n{json.dumps(chat_list)}'
         self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
+    @sql_operate
     def save_add_request(self,user: str,payload: str) -> None:
         model, target = json.loads(payload)
         self.SQL_obj.save_add(user, model, target)
 
     @logged_in
+    @sql_operate
     def get_add_request(self,user: str) -> None:
         requests = self.SQL_obj.get_add_request(user)
         payload = f'ADD_RESPONSE\n\n \n\n \n\n{json.dumps(requests)}'
         self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
+    @sql_operate
     def handle_add_request(self,user,payload):
         response, res = json.loads(payload)
         model = isinstance(response,list)
@@ -201,6 +228,7 @@ class Service:
         self.SQL_obj.deal_response(model,user,response,res)
 
     @logged_in
+    @sql_operate
     def search(self,user: str,target: str):
         """从数据库中获取与target对应的用户和群聊
 
@@ -216,6 +244,7 @@ class Service:
         self.sock.sendto(f'SEARCH_RESPONSE\n\n \n\n \n\n{json.dumps(res)}'.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
+    @sql_operate
     def new_group(self,user,groupname):
         self.SQL_obj.new_group(user,groupname)
 
@@ -239,3 +268,4 @@ if __name__ == "__main__":
             time.sleep(10)
         except KeyboardInterrupt:
             print('service stopped')
+            break
