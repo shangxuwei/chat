@@ -1,6 +1,7 @@
 import time
 import hashlib
 import pymysql
+from typing import *
 
 DBS = {
     'userinfo':{
@@ -45,7 +46,9 @@ DBS = {
         'id': 'int AUTO_INCREMENT NOT NULL',
         'filename': 'varchar(50) NOT NULL',
         'file_md5': 'varchar(32) NOT NULL',
-        'downloadable_user': 'varchar(33) NOT NULL',
+        'source': 'varchar(33) NOT NULL',
+        'downloadable_user': 'varchar(33)',
+        'downloadable_group': 'varchar(33)',
         'KEY': ['id'],
         'FOREIGN': 'FOREIGN KEY (file_md5) REFERENCES file(md5),'
                    'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username)'
@@ -106,15 +109,14 @@ class SQL_Operate:
         mysql_user = 'root'
         mysql_pwd = 'aa123456bb'
 
-        self.System = 'system'
-        self.System_pwd = 'aa123456bb'
-        self.System_pwd=hashlib.md5(self.System_pwd.encode('utf-8')).hexdigest()
-
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
         self.cur = self.conn.cursor()
 
-        # 判断数据库是否已经创建 
+        # 判断数据库是否已经创建
         if not bool(self.cur.execute("SELECT 1 FROM information_schema.schemata  WHERE schema_name=%s",(mysql_db,))):
+            self.System = 'system'
+            self.System_pwd = 'aa123456bb'
+            self.System_pwd=hashlib.md5(self.System_pwd.encode('utf-8')).hexdigest()
             self.cur.execute(f'CREATE DATABASE {mysql_db}')
             self.conn=pymysql.connect(host=mysql_host,port=mysql_port,db=mysql_db,
                                       user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -409,3 +411,40 @@ class SQL_Operate:
         sql = 'INSERT INTO group_members (group_name, group_member) VALUES (%s,%s)'
         self.cur.execute(sql,(groupname,manager,))
         self.conn.commit()
+
+    def save_file(self, file_name: str, source: str, date: str,data: bytes,md5: str,target: list[int,str]) -> None:
+        """保存文件至数据库
+
+        Args:
+            file_name: 一个字符串保存了文件名
+            source: 一个字符串保存了发送者名称
+            date: 一个字符串保存了浮点格式的时间戳
+            data: 一个二进制字符串保存了文件内容
+            md5: 一个字符串保存了文件的md5值
+            target: 一个列表保存了文件发送对象
+
+        Returns:
+            None
+        """
+        t = time.localtime(float(date))
+        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+        model, target_name = target
+        sql = 'SELECT COUNT(md5) FROM file WHERE md5=%s LIMIT 1'
+        self.cur.execute(sql,(md5,))
+        flag = self.cur.fetchall()[0][0]
+        if flag == 0:
+            sql = 'INSERT INTO file (source_user, time, filecontent, md5) VALUES (%s,%s,%s,%s)'
+            self.cur.execute(sql,(source,date,data,md5))
+            sql = ('INSERT INTO file_public (filename, file_md5, source, downloadable_user,downloadable_group)'
+                   '  VALUES (%s,%s,%s,%s,%s)')
+            if model:
+                self.cur.execute(sql,(file_name,md5,source,target_name,None))
+            else:
+                self.cur.execute(sql,(file_name,md5,source,None,target_name))
+        self.conn.commit()
+
+    def get_file(self,md5: str):
+        sql = ('SELECT a.filename,b.filecontent FROM file_public a '
+               'JOIN easychat.file b on b.md5 = a.file_md5 WHERE b.md5=%s')
+        self.cur.execute(sql,(md5,))
+        res = self.cur.fetchall()

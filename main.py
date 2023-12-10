@@ -1,9 +1,11 @@
 import json
 import tkinter as tk
+import tkinter.messagebox
 import time
 from local import client
 from page import login_page,register_page,chat_page,addfriend_page
 import os
+import windnd
 import atexit
 
 @atexit.register
@@ -82,10 +84,17 @@ def run_chat():
         send_msg()
         return 'break'
     page_chat.input_Text.bind("<Return>", entry)
+
     def enter(event):
         page_chat.input_Text.insert(tk.INSERT,'\n')
         return 'break'
     page_chat.input_Text.bind("<Shift-Return>", enter)
+
+    def drag(files):
+        res = page_chat.upload_file(files)
+        if res:
+            tools.upload(files)
+    windnd.hook_dropfiles(page_chat.input_Text,func=drag)
 
     def mouse_clicked(event):
         try:
@@ -94,7 +103,6 @@ def run_chat():
             model, target = json.loads(values['tags'][0])
             page_chat.chat_page.set(target)
             page_chat.clear()
-            print(type(model),type(target),model,target)
             tools.switch_chat(model,target)
         except IndexError:
             pass
@@ -168,6 +176,5 @@ if __name__ == "__main__":
     try:
         tools = client.Client()
         run_login()
-
     except KeyboardInterrupt:
         clean()

@@ -8,7 +8,9 @@ import hashlib
 from local import SqliteTools
 from concurrent.futures import ThreadPoolExecutor
 import tkinter.messagebox
-
+import base64
+import os
+from typing import *
 
 class Client:
     def __init__(self,user=None):
@@ -19,7 +21,7 @@ class Client:
         self.user = user
 
         self.ackpool = []
-        self.message_pool = ThreadPoolExecutor(max_workers=5)
+        self.message_pool = ThreadPoolExecutor(max_workers=200)
         self.online = 0
 
         self.messagebox: tk.Text = None # 聊天消息框
@@ -106,10 +108,9 @@ class Client:
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
                 'MESSAGE': [self.message,date,user,payload],
-                'UPLOAD': self.upload,
                 'DOWNLOAD': self.download,
                 'LOGOUT':[self.logout],
-                'ACK': [self.ack,date,user,payload],
+                'ACK': [self.ack,payload],
                 'CHAT_LIST': [self.save_chat_list,payload],
                 'ADD_RESPONSE': [self.update_requests_list,payload],
                 'SEARCH_RESPONSE': [self.search_response,payload],
@@ -174,27 +175,37 @@ class Client:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header: str,payload: str) -> None:
-        def send_message(head: str, message: str) -> None:
+    def send(self,header: str,payload: str,model:Literal['chat','file'] = 'chat') -> None:
+        def send_message(head: str, message: str, model) -> None:
             date = time.mktime(time.localtime())
             msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
             retry = 0
-            self.ackpool.append(hash(f'{head}{date}{self.user}'))
-            while self.ack_check(hash(f'{head}{date}{self.user}')) and retry <= 5:
-                self.sock.sendto(msg, self.service)
-                time.sleep(2)
-                retry += 1
-            if retry > 5:
-                tkinter.messagebox.showerror(title=head,message='connect timeout')
-        self.message_pool.submit(send_message,header,payload)
+            ack_hash = hashlib.md5(msg).hexdigest()
+            self.ackpool.append(ack_hash)
+            if model == 'chat':
+                while self.ack_check(ack_hash) and retry <= 5:
+                    self.sock.sendto(msg, self.service)
+                    time.sleep(2)
+                    retry += 1
+                if retry > 5:
+                    tkinter.messagebox.showerror(title=head,message='connect timeout')
+            elif model == 'file':
+                while self.ack_check(ack_hash):
+                    self.sock.sendto(msg, self.service)
+                    time.sleep(2)
+        if model == 'chat':
+            work = Thread(target=send_message,args=(header,payload,model))
+            work.start()
+        elif model == 'file':
+            self.message_pool.submit(send_message,header,payload,model)
 
-    def ack(self, header: str, date: str, user: str) -> None:
+    def ack(self, payload) -> None:
         try:
-            self.ackpool.remove(hash(f'{header}{date}{user}'))
+            self.ackpool.remove(payload)
         except:
             pass
 
-    def ack_check(self, flag: int) -> bool:
+    def ack_check(self, flag: str) -> bool:
         if flag in self.ackpool:
             return True
         return False
@@ -330,9 +341,21 @@ class Client:
         self.save_chat_list(json.dumps([[],[groupname]]))
         tkinter.messagebox.showinfo('新建群聊','新建群聊成功')
 
-    def upload(self):
-        # TODO:上传文件
-        pass
+    def upload(self,files: list[bytes]) -> None:
+        for _ in files:
+            with open(_.decode('gbk'),'rb') as file:
+                buf = file.read()
+                b64_buf = base64.b64encode(buf)
+                file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
+                filename = file_name+extension
+                readable_hash = hashlib.md5(buf).hexdigest()
+                size = 4096
+                block = len(base64.b64encode(buf)) // size + 1
+                sub = 0
+                while sub <= block - 1:
+                    payload = json.dumps([self.chat_page,filename, sub, block, b64_buf[sub*size:(sub+1)*size].decode(),readable_hash])
+                    self.send('UPLOAD',payload,'file')
+                    sub += 1
 
     def download(self):
         # TODO:下载文件

@@ -17,6 +17,7 @@ class ChatGui(tk.Tk):
         self.btn_addfri = tk.Button
         self.chat_list = ttk.Treeview()
         self.chat_page = tk.StringVar()
+        self.chat_page.set('system')
         self.fri_list = ''
         self.group_list = ''
         self.run()
@@ -32,23 +33,23 @@ class ChatGui(tk.Tk):
         self.resizable(width=False, height=False)
 
         tk.Label(self, textvariable=self.chat_page).place(x=0, y=0)
-        tk.Label(self, text="输入").place(x=0, y=435)
+        tk.Label(self, text="输入").place(x=0, y=420)
 
         self.msg = tk.Text(self, width=110, height=23)
         self.msg.place(x=0, y=30)
         self.msg.configure(state='disabled') #只读不写
 
-        self.input_Text = tk.Text(self, width=110, height=4)
-        self.input_Text.place(x=0,y=470)
+        self.input_Text = tk.Text(self, width=110, height=7)
+        self.input_Text.place(x=0,y=445)
 
         self.btn_send = tk.Button(self, text="send", bg="lightblue", width=10)
         self.btn_send.place(x=690,y=540)
 
         self.btn_face = tk.Button(self, text="表情包", width=10)
-        self.btn_face.place(x=440,y=435)
+        self.btn_face.place(x=440,y=410)
 
         self.btn_file = tk.Button(self, text="文件", width=10)
-        self.btn_file.place(x=620,y=435)
+        self.btn_file.place(x=620,y=410)
 
         # 添加好友
         self.btn_addfri = tk.Button(self, text="添加好友")
@@ -89,4 +90,12 @@ class ChatGui(tk.Tk):
     @staticmethod
     def logout():
         tkinter.messagebox.showerror('Error','用户在别处登录')
+
+    @staticmethod
+    def upload_file(files):
+        files = [_.decode('gbk') for _ in files]
+        msg = '\n'.join(files)
+        res = tkinter.messagebox.askokcancel('上传文件',f'是否上传以下文件{msg}')
+        return res
+
 
