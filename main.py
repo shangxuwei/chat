@@ -3,7 +3,7 @@ import tkinter as tk
 import tkinter.messagebox
 import time
 from local import client
-from page import login_page,register_page,chat_page,addfriend_page
+from page import login_page,register_page,chat_page,addfriend_page,file_page
 import os
 import windnd
 import atexit
@@ -80,6 +80,7 @@ def run_chat():
 
     tools.get_chat_list()
     tools.get_history()
+
     def entry(event):
         send_msg()
         return 'break'
@@ -119,7 +120,25 @@ def run_chat():
     def add_friend():
         run_add_page()
     page_chat.btn_addfri.configure(command=add_friend)
+
+    def cat_file_list():
+        run_file_page()
+    page_chat.btn_file.configure(command=cat_file_list)
     page_chat.mainloop()
+
+def run_file_page():
+    page_file = file_page.FileGui()
+    tools.file_table = page_file.table
+    tools.get_file_list()
+
+    def mouse_clicked(event):
+        items = page_file.table.selection()[0]
+        values = page_file.table.item(items)
+        if page_file.download_confirm(values['values'][0],values['values'][2]):
+            tools.download()
+    page_file.table.bind("<Double-Button-1>",mouse_clicked)
+
+    page_file.mainloop()
 
 def run_add_page():
     page_add=addfriend_page.AddGui()

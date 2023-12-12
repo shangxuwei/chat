@@ -63,6 +63,7 @@ class Service:
                     'SEARCH': [self.search, user, payload], # 搜索用户/群聊
                     'NEW_GROUP': [self.new_group, user, payload], # 新建群聊
                     'UPLOAD': [self.upload, user, date, payload], # 上传文件
+                    'GET_FILES': [self.get_files,user,payload], # 获取文件列表
                     'DOWNLOAD': [self.download, user], # 下载文件
                     'ONLINE': [self.online, user, address], # 在线心跳信息
                     'GET_CHATS': [self.get_chats, user], # 获取历史消息
@@ -259,6 +260,13 @@ class Service:
     def download(self,user):
         # TODO: 下载文件
         pass
+
+    @logged_in
+    @thread_lock
+    def get_files(self,user,target):
+        target = json.loads(target)
+        files = self.SQL_obj.get_file_list(target)
+        self.sock.sendto(f"FILES\n\n \n\n \n\n{json.dumps(files)}".encode('utf-8'),self.ip_pool[user])
 
 if __name__ == "__main__":
     service = Service()

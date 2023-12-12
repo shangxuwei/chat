@@ -429,8 +429,11 @@ class SQL_Operate:
         t = time.localtime(float(date))
         date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         model, target_name = target
-        sql = 'SELECT COUNT(md5) FROM file WHERE md5=%s LIMIT 1'
-        self.cur.execute(sql,(md5,))
+        if model:
+            sql = 'SELECT COUNT(file_md5) FROM file_public WHERE (file_md5=%s AND downloadable_user=%s) LIMIT 1'
+        else:
+            sql = 'SELECT COUNT(file_md5) FROM file_public WHERE (file_md5=%s AND downloadable_group=%s) LIMIT 1'
+        self.cur.execute(sql,(md5,target_name))
         flag = self.cur.fetchall()[0][0]
         if flag == 0:
             sql = 'INSERT INTO file (source_user, time, filecontent, md5) VALUES (%s,%s,%s,%s)'
@@ -442,6 +445,16 @@ class SQL_Operate:
             else:
                 self.cur.execute(sql,(file_name,md5,source,None,target_name))
         self.conn.commit()
+
+    def get_file_list(self,target):
+        model, name = target
+        if model:
+            sql = 'SELECT filename,source,file_md5 FROM file_public WHERE downloadable_user=%s'
+        else:
+            sql = 'SELECT filename,source,file_md5 FROM file_public WHERE downloadable_group=%s'
+        self.cur.execute(sql,(name,))
+        files = self.cur.fetchall()
+        return files
 
     def get_file(self,md5: str):
         sql = ('SELECT a.filename,b.filecontent FROM file_public a '

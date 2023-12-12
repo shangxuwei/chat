@@ -41,7 +41,11 @@ class Client:
         self.fri_requests = '' # 好友请求
         self.group_requests = '' # 加入群聊请求
 
+        self.file_table: ttk.Treeview = None
+
         self.chat_page = []
+
+        self.file_cache = {}
 
         self.Sql_obj:SqliteTools.SqlTools = None
 
@@ -68,7 +72,7 @@ class Client:
         self.sock.sendto(msg,self.service)
         try:
             self.sock.settimeout(1)
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             if int(data):
@@ -111,6 +115,7 @@ class Client:
                 'DOWNLOAD': self.download,
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,payload],
+                'FILES': [self.file_list,payload],
                 'CHAT_LIST': [self.save_chat_list,payload],
                 'ADD_RESPONSE': [self.update_requests_list,payload],
                 'SEARCH_RESPONSE': [self.search_response,payload],
@@ -175,14 +180,14 @@ class Client:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header: str,payload: str,model:Literal['chat','file'] = 'chat') -> None:
+    def send(self,header: str,payload: str,model:Literal['message','file'] = 'message') -> None:
         def send_message(head: str, message: str, model) -> None:
             date = time.mktime(time.localtime())
             msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
             retry = 0
             ack_hash = hashlib.md5(msg).hexdigest()
             self.ackpool.append(ack_hash)
-            if model == 'chat':
+            if model == 'message':
                 while self.ack_check(ack_hash) and retry <= 5:
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
@@ -193,7 +198,7 @@ class Client:
                 while self.ack_check(ack_hash):
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
-        if model == 'chat':
+        if model == 'message':
             work = Thread(target=send_message,args=(header,payload,model))
             work.start()
         elif model == 'file':
@@ -356,6 +361,14 @@ class Client:
                     payload = json.dumps([self.chat_page,filename, sub, block, b64_buf[sub*size:(sub+1)*size].decode(),readable_hash])
                     self.send('UPLOAD',payload,'file')
                     sub += 1
+
+    def get_file_list(self):
+        self.send('GET_FILES',json.dumps(self.chat_page),'message')
+
+    def file_list(self,payload):
+        files = json.loads(payload)
+        for file in files:
+            self.file_table.insert('','end',values=file)
 
     def download(self):
         # TODO:下载文件
