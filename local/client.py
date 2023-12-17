@@ -8,6 +8,13 @@ import hashlib
 from local import SqliteTools
 from concurrent.futures import ThreadPoolExecutor
 import tkinter.messagebox
+import base64
+import os
+from typing import *
+import logging
+logging.basicConfig(filename='local_log.txt',
+                    format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
+                    level=logging.DEBUG)
 
 
 class Client:
@@ -19,7 +26,7 @@ class Client:
         self.user = user
 
         self.ackpool = []
-        self.message_pool = ThreadPoolExecutor(max_workers=5)
+        self.message_pool = ThreadPoolExecutor(max_workers=200)
         self.online = 0
 
         self.messagebox: tk.Text = None # 聊天消息框
@@ -39,7 +46,11 @@ class Client:
         self.fri_requests = '' # 好友请求
         self.group_requests = '' # 加入群聊请求
 
+        self.file_table: ttk.Treeview = None
+
         self.chat_page = []
+
+        self.file_cache = {}
 
         self.Sql_obj:SqliteTools.SqlTools = None
 
@@ -56,6 +67,13 @@ class Client:
                     self.Sql_obj = None
         return init
 
+    @staticmethod
+    def thread_pool_callback(worker):
+        logging.info("called thread pool executor callback function")
+        worker_exception = worker.exception()
+        if worker_exception:
+            logging.exception("Worker return exception: {}".format(worker_exception))
+
     def login(self,user: str,password: str) -> int:
         header = 'LOGIN'
         date = time.mktime(time.localtime())
@@ -66,7 +84,7 @@ class Client:
         self.sock.sendto(msg,self.service)
         try:
             self.sock.settimeout(1)
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             if int(data):
@@ -93,7 +111,7 @@ class Client:
         self.sock.sendto(msg,self.service)
         try:
             self.sock.settimeout(1)
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             return int(data)
@@ -102,14 +120,14 @@ class Client:
 
     def listen(self):
         while self.online:
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
                 'MESSAGE': [self.message,date,user,payload],
-                'UPLOAD': self.upload,
-                'DOWNLOAD': self.download,
+                'DOWNLOAD': [self.download,payload],
                 'LOGOUT':[self.logout],
-                'ACK': [self.ack,date,user,payload],
+                'ACK': [self.ack,payload],
+                'FILES': [self.file_list,payload],
                 'CHAT_LIST': [self.save_chat_list,payload],
                 'ADD_RESPONSE': [self.update_requests_list,payload],
                 'SEARCH_RESPONSE': [self.search_response,payload],
@@ -174,27 +192,39 @@ class Client:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header: str,payload: str) -> None:
-        def send_message(head: str, message: str) -> None:
+    def send(self,header: str,payload: str,model:Literal['message','file'] = 'message') -> None:
+        def send_message(head: str, message: str, model) -> None:
             date = time.mktime(time.localtime())
             msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
             retry = 0
-            self.ackpool.append(hash(f'{head}{date}{self.user}'))
-            while self.ack_check(hash(f'{head}{date}{self.user}')) and retry <= 5:
-                self.sock.sendto(msg, self.service)
-                time.sleep(2)
-                retry += 1
-            if retry > 5:
-                tkinter.messagebox.showerror(title=head,message='connect timeout')
-        self.message_pool.submit(send_message,header,payload)
+            ack_hash = hashlib.md5(msg).hexdigest()
+            self.ackpool.append(ack_hash)
+            if model == 'message':
+                while self.ack_check(ack_hash) and retry <= 5:
+                    self.sock.sendto(msg, self.service)
+                    time.sleep(2)
+                    retry += 1
+                if retry > 5:
+                    tkinter.messagebox.showerror(title=head,message='connect timeout')
+            elif model == 'file':
+                while self.ack_check(ack_hash):
+                    self.sock.sendto(msg, self.service)
+                    time.sleep(2)
+        if model == 'message':
+            work = Thread(target=send_message,args=(header,payload,model))
+            work.start()
+        elif model == 'file':
+            task = self.message_pool.submit(send_message,header,payload,model)
+            task.add_done_callback(self.thread_pool_callback)
 
-    def ack(self, header: str, date: str, user: str) -> None:
+
+    def ack(self, payload) -> None:
         try:
-            self.ackpool.remove(hash(f'{header}{date}{user}'))
+            self.ackpool.remove(payload)
         except:
             pass
 
-    def ack_check(self, flag: int) -> bool:
+    def ack_check(self, flag: str) -> bool:
         if flag in self.ackpool:
             return True
         return False
@@ -277,42 +307,102 @@ class Client:
         Returns:
             None
         """
-        user, group = json.loads(payload)
-        self.res_friend.configure(text=str(user),fg=('green' if user is not None else 'red'))
-        self.res_group.configure(text=str(group),fg=('green' if group is not None else 'red'))
-        if user is None:
+        name, user_exist, group_exist = json.loads(payload)
+        self.res_friend.configure(text=name,fg=('green' if user_exist else 'red'))
+        self.res_group.configure(text=name,fg=('green' if group_exist else 'red'))
+        if not user_exist:
             self.add_fri_Btn.configure(text='用户不存在')
-        elif user == self.user or self.Sql_obj.friend_is_exist(user):
+        elif name == self.user or self.Sql_obj.friend_is_exist(user_exist):
             self.add_fri_Btn.configure(text='好友已存在')
-        elif self.Sql_obj.fir_request_is_exist(user):
+        elif self.Sql_obj.fir_request_is_exist(name):
             self.add_fri_Btn.configure(text='已发送请求')
         else:
             self.add_fri_Btn.configure(state='normal',text='添加好友')
-        if group is None:
+        if not group_exist:
             self.add_group_Btn.configure(state='normal',text='创建群聊')
-            # TODO:新建群聊
-        elif self.Sql_obj.group_is_exist(group):
+        elif self.Sql_obj.group_is_exist(name):
             self.add_group_Btn.configure(text='已在群聊中')
-        elif self.Sql_obj.group_request_is_exist(group):
+        elif self.Sql_obj.group_request_is_exist(name):
             self.add_group_Btn.configure(text='请求已发送')
         else:
             self.add_group_Btn.configure(state='normal',text='添加群聊')
 
     @sql_operate
     def add_request(self,model:int ,target: str) -> None:
+        """发起添加好友/群聊请求
+
+        Args:
+            model: 一个整数表示添加好友或群聊，1添加好友，0添加群聊
+            target: 一个字符串表示目标名称
+
+        Returns:
+            None
+        """
         header = 'ADD'
         payload = json.dumps([model,target])
         self.send(header,payload)
         self.Sql_obj.save_add_request(model,target)
         self.request_list.insert(self.my_fri_requests if model else self.my_group_requests,'end',text=target)
 
-    def upload(self):
-        # TODO:上传文件
-        pass
+    @sql_operate
+    def new_group(self, groupname: str) -> None:
+        """发起新建群聊请求
 
-    def download(self):
-        # TODO:下载文件
-        pass
+        Args:
+            groupname: 群聊名称
+
+        Returns:
+            None
+        """
+        self.send('NEW_GROUP',groupname)
+        self.Sql_obj.save_chat(0,groupname)
+        self.request_list.insert(self.my_fri_requests,'end',text=groupname)
+        self.save_chat_list(json.dumps([[],[groupname]]))
+        tkinter.messagebox.showinfo('新建群聊','新建群聊成功')
+
+    def upload(self,files: list[bytes]) -> None:
+        for _ in files:
+            with open(_.decode('gbk'),'rb') as file:
+                buf = file.read()
+                b64_buf = base64.b64encode(buf)
+                file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
+                filename = file_name+extension
+                readable_hash = hashlib.md5(buf).hexdigest()
+                size = 4096
+                block = len(base64.b64encode(buf)) // size + 1
+                sub = 0
+                while sub <= block - 1:
+                    payload = json.dumps([self.chat_page,filename, sub, block, b64_buf[sub*size:(sub+1)*size].decode(),readable_hash])
+                    self.send('UPLOAD',payload,'file')
+                    sub += 1
+
+    def get_file_list(self):
+        self.send('GET_FILES',json.dumps(self.chat_page),'message')
+
+    def file_list(self,payload):
+        files = json.loads(payload)
+        for file in files:
+            self.file_table.insert('','end',values=file)
+
+    def get_download(self,sub,block,filename,md5):
+        payload = json.dumps([sub,block,filename,md5])
+        self.send('DOWNLOAD',payload,'file')
+
+    def download(self,payload):
+        sub, block, filename, md5, byte = json.loads(payload)
+        if md5 not in self.file_cache.keys():
+            self.file_cache[md5] = [None] * block
+        self.file_cache[md5][sub] = base64.b64decode(byte)
+        if None not in self.file_cache[md5]:
+            buf = bytes()
+            for _ in self.file_cache[md5]:
+                buf += _
+            with open(filename,'wb') as file:
+                file.write(buf)
+            self.get_download(block,block,filename,md5)
+            del self.file_cache[md5]
+            return
+        self.get_download(sub+1,block,filename,md5)
 
     @sql_operate
     def switch_chat(self, model: int, target: str) -> None:

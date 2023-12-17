@@ -3,7 +3,7 @@ import tkinter as tk
 import tkinter.messagebox
 from tkinter import ttk
 
-class AddGui(tk.Tk):
+class AddGui(tk.Toplevel):
     def __init__(self):
         super().__init__()
         self.title("添加好友")  # 窗口名
@@ -64,7 +64,3 @@ class AddGui(tk.Tk):
     @staticmethod
     def sent_request(title):
         tkinter.messagebox.showinfo(title,'发送请求成功')
-
-if __name__ == '__main__':
-    page = AddGui()
-    page.mainloop()

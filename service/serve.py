@@ -1,3 +1,4 @@
+import base64
 import socket
 import threading
 import time
@@ -5,6 +6,7 @@ import traceback
 import SQLTools
 import json
 import logging
+import hashlib
 logging.basicConfig(filename='log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)
@@ -19,7 +21,18 @@ class Service:
         self.sessions = {}
         self.SQL_obj = SQLTools.SQL_Operate()
         self.ack_life = []
+        self.up_file_cache = dict()
+        self.dw_file_cache = dict()
+        self.lock = threading.RLock()
 
+    @staticmethod
+    def thread_lock(func):
+        def wrap(self,*args):
+            self.lock.acquire()
+            res = func(self,*args)
+            self.lock.release()
+            return res
+        return wrap
 
     @staticmethod
     def logged_in(func):
@@ -33,30 +46,33 @@ class Service:
         while True:
             try:
                 data, address = self.sock.recvfrom(8192)
+                hash_pack = hashlib.md5(data).hexdigest()
                 header, date, user, payload = data.decode('utf-8').split("\n\n", 3)
                 if header not in ['LOGIN',"REGISTER"]:
-                    ack_pak = f'{header}{date}{user}'
-                    self.ack(header,date,user,address)
-                    if ack_pak in self.ack_life:
+                    self.ack(hash_pack,address)
+                    if hash_pack in self.ack_life:
                         continue
-                    kill = threading.Thread(target=self.kill_ack_message,args=(ack_pak,))
+                    kill = threading.Thread(target=self.kill_ack_message,args=(hash_pack,))
                     kill.start()
                 method = {
                     'LOGIN': [self.login, user, address, payload], # 登录
                     'REGISTER': [self.register, user, address, payload], # 注册
-                    'MESSAGE': [self.save_message, user, date, payload], # 消息接收
-                    'GET_MESSAGE_HISTORY': [self.get_msg,user], # 获取历史消息
-                    'ADD':[self.save_add_request,user,payload], # 添加好友
-                    'GET_ADD_REQUEST':[self.get_add_request,user], # 获取好友请求
-                    'REPLY_REQUEST':[self.handle_add_request,user,payload], # 回复好友请求
-                    'SEARCH':[self.search,user,payload], # 搜索用户/群聊
-                    'UPLOAD': [self.upload, user], # 上传文件
-                    'DOWNLOAD': [self.download, user], # 下载文件
+                    'MESSAGE': [self.save_message, user, user, date, payload], # 消息接收
+                    'GET_MESSAGE_HISTORY': [self.get_msg, user], # 获取历史消息
+                    'ADD': [self.save_add_request, user, payload], # 添加好友
+                    'GET_ADD_REQUEST': [self.get_add_request, user], # 获取好友请求
+                    'REPLY_REQUEST': [self.handle_add_request, user, payload], # 回复好友请求
+                    'SEARCH': [self.search, user, payload], # 搜索用户/群聊
+                    'NEW_GROUP': [self.new_group, user, payload], # 新建群聊
+                    'UPLOAD': [self.upload, user, date, payload], # 上传文件
+                    'GET_FILES': [self.get_files,user, payload], # 获取文件列表
+                    'DOWNLOAD': [self.download, user, payload], # 下载文件
                     'ONLINE': [self.online, user, address], # 在线心跳信息
-                    'GET_CHATS':[self.get_chats,user], # 获取历史消息
-                    'LOGOUT':[self.logout, user, address] # 下线
+                    'GET_CHATS': [self.get_chats, user], # 获取历史消息
+                    'LOGOUT': [self.logout, user, address] # 下线
                 }
-                method[header][0](*(method[header][1:]))
+                task = threading.Thread(target=method[header][0],args=(method[header][1:]))
+                task.start()
             except ConnectionResetError:
                 print(self.ip_pool)
             except KeyboardInterrupt:
@@ -64,17 +80,16 @@ class Service:
             except:
                 traceback.print_exc()
 
-    def ack(self,header: str,date: str,user: str,address: tuple[str,int]):
-        ack_mag = f'ACK\n\n{header}\n\n{date}\n\n{user}'.encode('utf-8')
+    def ack(self,hash_pack: str, address: tuple[str,int]):
+        ack_mag = f'ACK\n\n\n\n\n\n{hash_pack}'.encode('utf-8')
         self.sock.sendto(ack_mag, address)
-        ack_pak = f'{header}{date}{user}'
-        logging.debug(f'ACK to {address}, {ack_pak}, hash:{hash(ack_pak)}')
 
     def kill_ack_message(self,ack_pak):
         self.ack_life.append(ack_pak)
         time.sleep(2)
         self.ack_life.pop(0)
 
+    @thread_lock
     def login(self,user: str ,address: tuple ,payload: str) -> None:
         flag = self.SQL_obj.login_check(user,payload)
         if flag == 1:
@@ -82,6 +97,7 @@ class Service:
         self.sock.sendto(str(flag).encode("utf-8"),address)
         logging.info(f"address:{address} user:{user} res:{flag}")
 
+    @thread_lock
     def register(self,user: str,address: tuple,payload: str) -> None:
         flag = 3
         if self.check_username(user):
@@ -90,6 +106,7 @@ class Service:
         logging.info(f"address:{address} user:{user} res:{flag}")
 
     @logged_in
+    @thread_lock
     def online(self,user: str ,address: tuple) -> None:
         if user in self.ip_pool and self.ip_pool[user] !=  address:
             self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'),self.ip_pool[user])
@@ -108,29 +125,32 @@ class Service:
         return True
 
     @logged_in
+    @thread_lock
     def logout(self,user: str ,address: tuple) -> None:
         del self.ip_pool[user]
         self.sock.sendto('LOGOUT\n\n \n\n \n\n'.encode('utf-8'), address)
 
     @logged_in
-    def save_message(self, user: str, date: float, payload: str) -> None:
+    @thread_lock
+    def save_message(self, user: str,msg_user: str,date: float, payload: str) -> None:
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         model = target[0] # is私聊
         if target[1] == 'system':
             return None
         if model:
-            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{payload}'.encode('utf-8'), self.ip_pool[user])
+            self.sock.sendto(f'MESSAGE\n\n{date}\n\n{msg_user}\n\n{payload}'.encode('utf-8'), self.ip_pool[user])
             if target[1] in self.ip_pool:
-                self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{payload}'.encode('utf-8'),self.ip_pool[target[1]])
+                self.sock.sendto(f'MESSAGE\n\n{date}\n\n{msg_user}\n\n{payload}'.encode('utf-8'),self.ip_pool[target[1]])
         else:
             for member in self.SQL_obj.get_group_members(target[1]):
                 if member in self.ip_pool:
-                    self.sock.sendto(f'MESSAGE\n\n{date}\n\n{user}\n\n{payload}'.encode('utf-8'), self.ip_pool[member])
+                    self.sock.sendto(f'MESSAGE\n\n{date}\n\n{msg_user}\n\n{payload}'.encode('utf-8'), self.ip_pool[member])
         self.SQL_obj.save_msg(date,user,model,target[1],msg)
 
     @logged_in
-    def get_msg(self,user: str) -> None:
+    @thread_lock
+    def get_msg(self, user: str) -> None:
         msgs = self.SQL_obj.get_msg(1,user)
         address = self.ip_pool[user]
         for msg in msgs:
@@ -144,23 +164,27 @@ class Service:
         self.sock.sendto('HISTORY\n\n\n\n2\n\n'.encode('utf-8'),address)
 
     @logged_in
-    def get_chats(self,user: str) -> None:
+    @thread_lock
+    def get_chats(self, user: str) -> None:
         chat_list = self.SQL_obj.get_chat_list(user)
         payload = f'CHAT_LIST\n\n \n\n \n\n{json.dumps(chat_list)}'
         self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
-    def save_add_request(self,user: str,payload: str) -> None:
+    @thread_lock
+    def save_add_request(self,user: str, payload: str) -> None:
         model, target = json.loads(payload)
         self.SQL_obj.save_add(user, model, target)
 
     @logged_in
+    @thread_lock
     def get_add_request(self,user: str) -> None:
         requests = self.SQL_obj.get_add_request(user)
         payload = f'ADD_RESPONSE\n\n \n\n \n\n{json.dumps(requests)}'
         self.sock.sendto(payload.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
+    @thread_lock
     def handle_add_request(self,user,payload):
         response, res = json.loads(payload)
         model = isinstance(response,list)
@@ -197,6 +221,7 @@ class Service:
         self.SQL_obj.deal_response(model,user,response,res)
 
     @logged_in
+    @thread_lock
     def search(self,user: str,target: str):
         """从数据库中获取与target对应的用户和群聊
 
@@ -212,12 +237,51 @@ class Service:
         self.sock.sendto(f'SEARCH_RESPONSE\n\n \n\n \n\n{json.dumps(res)}'.encode('utf-8'),self.ip_pool[user])
 
     @logged_in
-    def upload(self,user):
-        pass
+    @thread_lock
+    def new_group(self,user,groupname):
+        self.SQL_obj.new_group(user,groupname)
 
     @logged_in
-    def download(self,user):
-        pass
+    @thread_lock
+    def upload(self,user,date,payload):
+        target, filename, sub, block, buf, readable_hash = json.loads(payload)
+        if readable_hash not in self.up_file_cache:
+            self.up_file_cache[readable_hash] = [None] * block
+        self.up_file_cache[readable_hash][sub] = base64.b64decode(buf)
+        if None not in self.up_file_cache[readable_hash]:
+            logging.info(f'received {filename}')
+            byte = bytes()
+            for _ in self.up_file_cache[readable_hash]:
+                byte += _
+            self.SQL_obj.save_file(filename,user,date,byte,readable_hash,target)
+            del self.up_file_cache[readable_hash]
+            msg = f'{json.dumps(target)}\n{user}已上传文件{filename}'
+            self.save_message(user,'system',date,msg)
+
+    @logged_in
+    @thread_lock
+    def download(self,user,payload):
+        sub, block, filename, md5 = json.loads(payload)
+        if sub is None:
+            sub = 0
+        if sub == block:
+            del self.dw_file_cache[md5]
+        size = 4096
+        if md5 not in self.dw_file_cache.keys():
+            buf = self.SQL_obj.get_file(filename,md5)
+            self.dw_file_cache[md5] = base64.b64encode(buf)
+        else:
+            pak = self.dw_file_cache[md5][sub*size: (sub+1)*size].decode()
+            block = len(self.dw_file_cache[md5]) // size + 1
+            self.sock.sendto(f'DOWNLOAD\n\n\n\n\n\n{json.dumps([sub,block,filename,md5,pak])}'.encode('utf-8'),self.ip_pool[user])
+
+
+    @logged_in
+    @thread_lock
+    def get_files(self,user,target):
+        target = json.loads(target)
+        files = self.SQL_obj.get_file_list(target)
+        self.sock.sendto(f"FILES\n\n \n\n \n\n{json.dumps(files)}".encode('utf-8'),self.ip_pool[user])
 
 if __name__ == "__main__":
     service = Service()
@@ -229,3 +293,4 @@ if __name__ == "__main__":
             time.sleep(10)
         except KeyboardInterrupt:
             print('service stopped')
+            break

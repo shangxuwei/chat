@@ -1,9 +1,11 @@
 import json
 import tkinter as tk
+import tkinter.messagebox
 import time
 from local import client
-from page import login_page,register_page,chat_page,addfriend_page
+from page import login_page,register_page,chat_page,addfriend_page,file_page
 import os
+import windnd
 import atexit
 
 @atexit.register
@@ -78,14 +80,22 @@ def run_chat():
 
     tools.get_chat_list()
     tools.get_history()
+
     def entry(event):
         send_msg()
         return 'break'
     page_chat.input_Text.bind("<Return>", entry)
+
     def enter(event):
         page_chat.input_Text.insert(tk.INSERT,'\n')
         return 'break'
     page_chat.input_Text.bind("<Shift-Return>", enter)
+
+    def drag(files):
+        res = page_chat.upload_file(files)
+        if res:
+            tools.upload(files)
+    windnd.hook_dropfiles(page_chat.input_Text,func=drag)
 
     def mouse_clicked(event):
         try:
@@ -94,7 +104,6 @@ def run_chat():
             model, target = json.loads(values['tags'][0])
             page_chat.chat_page.set(target)
             page_chat.clear()
-            print(type(model),type(target),model,target)
             tools.switch_chat(model,target)
         except IndexError:
             pass
@@ -111,11 +120,29 @@ def run_chat():
     def add_friend():
         run_add_page()
     page_chat.btn_addfri.configure(command=add_friend)
+
+    def cat_file_list():
+        run_file_page()
+    page_chat.btn_file.configure(command=cat_file_list)
     page_chat.mainloop()
+
+def run_file_page():
+    page_file = file_page.FileGui()
+    tools.file_table = page_file.table
+    tools.get_file_list()
+
+    def mouse_clicked(event):
+        items = page_file.table.selection()[0]
+        values = page_file.table.item(items)
+        if page_file.download_confirm(values['values'][0],values['values'][2]):
+            tools.get_download(None,None,values['values'][0],values['values'][2])
+    page_file.table.bind("<Double-Button-1>",mouse_clicked)
+
+    page_file.mainloop()
 
 def run_add_page():
     page_add=addfriend_page.AddGui()
-
+    page_add.title(f'添加好友:{tools.user}')
     tools.request_list = page_add.request_list
     tools.my_fri_requests = page_add.my_fir_request
     tools.my_group_requests = page_add.my_group_request
@@ -137,12 +164,17 @@ def run_add_page():
         target = page_add.friend.cget("text")
         tools.add_request(1,target)
         page_add.sent_request('添加好友')
+        page_add.addfri_Button.configure(state='disabled')
     page_add.addfri_Button.configure(command=add_friend)
 
     def add_group():
         target = page_add.group.cget("text")
-        tools.add_request(0,target)
-        page_add.sent_request('添加群聊')
+        if page_add.addgroup_Button.cget("text") == '创建群聊':
+            tools.new_group(target)
+        else:
+            tools.add_request(0,target)
+            page_add.sent_request('添加群聊')
+        page_add.addgroup_Button.configure(state='disabled')
     page_add.addgroup_Button.configure(command=add_group)
 
     def mouse_clicked(event):
