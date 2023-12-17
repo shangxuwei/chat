@@ -11,8 +11,6 @@ logging.basicConfig(filename='log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)
 
-
-
 class Service:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
