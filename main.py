@@ -135,7 +135,7 @@ def run_file_page():
         items = page_file.table.selection()[0]
         values = page_file.table.item(items)
         if page_file.download_confirm(values['values'][0],values['values'][2]):
-            tools.download()
+            tools.get_download(None,None,values['values'][0],values['values'][2])
     page_file.table.bind("<Double-Button-1>",mouse_clicked)
 
     page_file.mainloop()

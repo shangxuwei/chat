@@ -11,6 +11,11 @@ import tkinter.messagebox
 import base64
 import os
 from typing import *
+import logging
+logging.basicConfig(filename='local_log.txt',
+                    format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
+                    level=logging.DEBUG)
+
 
 class Client:
     def __init__(self,user=None):
@@ -62,6 +67,13 @@ class Client:
                     self.Sql_obj = None
         return init
 
+    @staticmethod
+    def thread_pool_callback(worker):
+        logging.info("called thread pool executor callback function")
+        worker_exception = worker.exception()
+        if worker_exception:
+            logging.exception("Worker return exception: {}".format(worker_exception))
+
     def login(self,user: str,password: str) -> int:
         header = 'LOGIN'
         date = time.mktime(time.localtime())
@@ -99,7 +111,7 @@ class Client:
         self.sock.sendto(msg,self.service)
         try:
             self.sock.settimeout(1)
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
             return int(data)
@@ -108,11 +120,11 @@ class Client:
 
     def listen(self):
         while self.online:
-            data, address = self.sock.recvfrom(4096)
+            data, address = self.sock.recvfrom(8192)
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
                 'MESSAGE': [self.message,date,user,payload],
-                'DOWNLOAD': self.download,
+                'DOWNLOAD': [self.download,payload],
                 'LOGOUT':[self.logout],
                 'ACK': [self.ack,payload],
                 'FILES': [self.file_list,payload],
@@ -202,7 +214,9 @@ class Client:
             work = Thread(target=send_message,args=(header,payload,model))
             work.start()
         elif model == 'file':
-            self.message_pool.submit(send_message,header,payload,model)
+            task = self.message_pool.submit(send_message,header,payload,model)
+            task.add_done_callback(self.thread_pool_callback)
+
 
     def ack(self, payload) -> None:
         try:
@@ -370,9 +384,25 @@ class Client:
         for file in files:
             self.file_table.insert('','end',values=file)
 
-    def download(self):
-        # TODO:下载文件
-        pass
+    def get_download(self,sub,block,filename,md5):
+        payload = json.dumps([sub,block,filename,md5])
+        self.send('DOWNLOAD',payload,'file')
+
+    def download(self,payload):
+        sub, block, filename, md5, byte = json.loads(payload)
+        if md5 not in self.file_cache.keys():
+            self.file_cache[md5] = [None] * block
+        self.file_cache[md5][sub] = base64.b64decode(byte)
+        if None not in self.file_cache[md5]:
+            buf = bytes()
+            for _ in self.file_cache[md5]:
+                buf += _
+            with open(filename,'wb') as file:
+                file.write(buf)
+            self.get_download(block,block,filename,md5)
+            del self.file_cache[md5]
+            return
+        self.get_download(sub+1,block,filename,md5)
 
     @sql_operate
     def switch_chat(self, model: int, target: str) -> None:

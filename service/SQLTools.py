@@ -456,8 +456,9 @@ class SQL_Operate:
         files = self.cur.fetchall()
         return files
 
-    def get_file(self,md5: str):
-        sql = ('SELECT a.filename,b.filecontent FROM file_public a '
-               'JOIN easychat.file b on b.md5 = a.file_md5 WHERE b.md5=%s')
-        self.cur.execute(sql,(md5,))
+    def get_file(self,filename:str ,md5: str):
+        sql = ('SELECT b.filecontent FROM file_public a '
+               'JOIN easychat.file b on b.md5 = a.file_md5 WHERE b.md5=%s AND a.filename=%s LIMIT 1')
+        self.cur.execute(sql,(md5,filename))
         res = self.cur.fetchall()
+        return res[0][0]

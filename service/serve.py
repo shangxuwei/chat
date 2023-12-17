@@ -21,15 +21,17 @@ class Service:
         self.sessions = {}
         self.SQL_obj = SQLTools.SQL_Operate()
         self.ack_life = []
-        self.file_cache = dict()
+        self.up_file_cache = dict()
+        self.dw_file_cache = dict()
         self.lock = threading.RLock()
 
     @staticmethod
     def thread_lock(func):
         def wrap(self,*args):
             self.lock.acquire()
-            func(self,*args)
+            res = func(self,*args)
             self.lock.release()
+            return res
         return wrap
 
     @staticmethod
@@ -63,8 +65,8 @@ class Service:
                     'SEARCH': [self.search, user, payload], # 搜索用户/群聊
                     'NEW_GROUP': [self.new_group, user, payload], # 新建群聊
                     'UPLOAD': [self.upload, user, date, payload], # 上传文件
-                    'GET_FILES': [self.get_files,user,payload], # 获取文件列表
-                    'DOWNLOAD': [self.download, user], # 下载文件
+                    'GET_FILES': [self.get_files,user, payload], # 获取文件列表
+                    'DOWNLOAD': [self.download, user, payload], # 下载文件
                     'ONLINE': [self.online, user, address], # 在线心跳信息
                     'GET_CHATS': [self.get_chats, user], # 获取历史消息
                     'LOGOUT': [self.logout, user, address] # 下线
@@ -243,23 +245,36 @@ class Service:
     @thread_lock
     def upload(self,user,date,payload):
         target, filename, sub, block, buf, readable_hash = json.loads(payload)
-        if readable_hash not in self.file_cache:
-            self.file_cache[readable_hash] = [None] * block
-        self.file_cache[readable_hash][sub] = base64.b64decode(buf)
-        if None not in self.file_cache[readable_hash]:
+        if readable_hash not in self.up_file_cache:
+            self.up_file_cache[readable_hash] = [None] * block
+        self.up_file_cache[readable_hash][sub] = base64.b64decode(buf)
+        if None not in self.up_file_cache[readable_hash]:
             logging.info(f'received {filename}')
             byte = bytes()
-            for _ in self.file_cache[readable_hash]:
+            for _ in self.up_file_cache[readable_hash]:
                 byte += _
             self.SQL_obj.save_file(filename,user,date,byte,readable_hash,target)
-            del self.file_cache[readable_hash]
+            del self.up_file_cache[readable_hash]
             msg = f'{json.dumps(target)}\n{user}已上传文件{filename}'
             self.save_message(user,'system',date,msg)
 
     @logged_in
-    def download(self,user):
-        # TODO: 下载文件
-        pass
+    @thread_lock
+    def download(self,user,payload):
+        sub, block, filename, md5 = json.loads(payload)
+        if sub is None:
+            sub = 0
+        if sub == block:
+            del self.dw_file_cache[md5]
+        size = 4096
+        if md5 not in self.dw_file_cache.keys():
+            buf = self.SQL_obj.get_file(filename,md5)
+            self.dw_file_cache[md5] = base64.b64encode(buf)
+        else:
+            pak = self.dw_file_cache[md5][sub*size: (sub+1)*size].decode()
+            block = len(self.dw_file_cache[md5]) // size + 1
+            self.sock.sendto(f'DOWNLOAD\n\n\n\n\n\n{json.dumps([sub,block,filename,md5,pak])}'.encode('utf-8'),self.ip_pool[user])
+
 
     @logged_in
     @thread_lock
