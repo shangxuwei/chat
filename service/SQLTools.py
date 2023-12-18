@@ -1,7 +1,6 @@
 import time
 import hashlib
 import pymysql
-from typing import *
 
 DBS = {
     'userinfo':{
@@ -85,6 +84,7 @@ DBS = {
                    'FOREIGN KEY (source_user) REFERENCES userinfo(username)'
     }
 }
+
 class SQL_Operate:
     """服务端的数据库操作方法集合
 
@@ -233,9 +233,9 @@ class SQL_Operate:
         self.conn.commit()
 
     def get_msg(self,model: int,target: str) -> list:
-        """获取指定用户的历史消息
+        """获取历史消息
 
-        获取指定用户与其他用户及群聊中的历史消息，群聊消息仅获取每个群聊的最后五条，个人不限
+        获取指定用户与其他用户及群聊中的历史消息，群聊消息仅获取每个群聊的最后10条，个人不限
 
         Args:
             model: 获取消息模式标识，1表示私聊，0表示群聊
@@ -257,7 +257,7 @@ class SQL_Operate:
             for _ in groups:
                 sql = 'SELECT * FROM group_chat_history  WHERE target_group=%s'
                 self.cur.execute(sql,(_,))
-                msgs += list(self.cur.fetchall()[-5:])
+                msgs += list(self.cur.fetchall()[-10:])
         return msgs
 
     def get_chat_list(self,user: str) -> tuple[list[str],list[str]]:
@@ -410,6 +410,7 @@ class SQL_Operate:
         self.cur.execute(sql,(groupname,manager,))
         sql = 'INSERT INTO group_members (group_name, group_member) VALUES (%s,%s)'
         self.cur.execute(sql,(groupname,manager,))
+        self.cur.execute(sql,(groupname,'system'))
         self.conn.commit()
 
     def save_file(self, file_name: str, source: str, date: str,data: bytes,md5: str,target: list[int,str]) -> None:
@@ -446,7 +447,15 @@ class SQL_Operate:
                 self.cur.execute(sql,(file_name,md5,source,None,target_name))
         self.conn.commit()
 
-    def get_file_list(self,target):
+    def get_file_list(self,target: list[int,str]) -> tuple:
+        """获取文件列表
+
+        Args:
+            target: 一个列表指定了目标聊天
+
+        Returns:
+            None
+        """
         model, name = target
         if model:
             sql = 'SELECT filename,source,file_md5 FROM file_public WHERE downloadable_user=%s'
@@ -456,7 +465,16 @@ class SQL_Operate:
         files = self.cur.fetchall()
         return files
 
-    def get_file(self,filename:str ,md5: str):
+    def get_file(self,filename:str ,md5: str) -> bytes:
+        """获取文件
+
+        Args:
+            filename: 文件名
+            md5: 文件md5值
+
+        Returns:
+
+        """
         sql = ('SELECT b.filecontent FROM file_public a '
                'JOIN easychat.file b on b.md5 = a.file_md5 WHERE b.md5=%s AND a.filename=%s LIMIT 1')
         self.cur.execute(sql,(md5,filename))

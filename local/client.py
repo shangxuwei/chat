@@ -18,15 +18,30 @@ logging.basicConfig(filename='local_log.txt',
 
 
 class Client:
-    def __init__(self,user=None):
+    """客户端运行类
+
+    提供了登录，注册，收发信，文件上传下载功能函数
+
+    Attributes:
+        self.sock: socket对象
+        self.service: 服务端ip及端口号
+        self.user: 登录用户名
+        self.ackpool: ack消息队列
+        self.message_pool: 文件上传消息线程池
+        self.online: 在线标识
+        self.chat_page: 聊天页面
+        self.file_cache: 下载文件缓存
+        self.SQL_obj: 数据库操作对象
+    """
+    def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 0))
         # 服务端地址
         self.service = ('127.0.0.1', 10088)
-        self.user = user
+        self.user = None
 
         self.ackpool = []
-        self.message_pool = ThreadPoolExecutor(max_workers=200)
+        self.message_pool = ThreadPoolExecutor(max_workers=40)
         self.online = 0
 
         self.messagebox: tk.Text = None # 聊天消息框
@@ -46,16 +61,19 @@ class Client:
         self.fri_requests = '' # 好友请求
         self.group_requests = '' # 加入群聊请求
 
-        self.file_table: ttk.Treeview = None
+        self.up_down_task: tk.StringVar = None # 上传下载消息
+
+        self.file_table: ttk.Treeview = None # 文件列表
 
         self.chat_page = []
 
         self.file_cache = {}
 
-        self.Sql_obj:SqliteTools.SqlTools = None
+        self.Sql_obj: SqliteTools.SqlTools = None
 
     @staticmethod
     def sql_operate(func):
+        """数据库操作装饰器"""
         def init(self,*args):
             self.Sql_obj = SqliteTools.SqlTools(self.user, model='run')
             try:
@@ -69,12 +87,37 @@ class Client:
 
     @staticmethod
     def thread_pool_callback(worker):
+        """线程池故障捕获"""
         logging.info("called thread pool executor callback function")
         worker_exception = worker.exception()
         if worker_exception:
             logging.exception("Worker return exception: {}".format(worker_exception))
 
-    def login(self,user: str,password: str) -> int:
+    def get_work_queue(self):
+        """下载进度刷新"""
+        while True:
+            if self.up_down_task is None:
+                time.sleep(0.5)
+                continue
+            download_task = len(self.file_cache.keys())
+            percent = None
+            if download_task != 0:
+                data = list(self.file_cache.values())[0]
+                percent = '%.2f' % ((len(data)-data.count(None))/len(data)*100)
+            msg = f'下载任务数: {download_task} : {percent}% (百分比仅显示第一个任务)'
+            self.up_down_task.set(msg)
+            time.sleep(2)
+
+    def login(self, user: str, password: str) -> int:
+        """发起登录请求
+
+        Args:
+            user: 用户名
+            password: 用户密码
+
+        Returns:
+            None
+        """
         header = 'LOGIN'
         date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
@@ -90,18 +133,27 @@ class Client:
             if int(data):
                 self.online = 1
                 self.user = user
-                listen = Thread(target=self.listen)
-                listen.daemon = True
+                listen = Thread(target=self.listen,daemon=True)
+                keep = Thread(target=self.keep,daemon=True)
+                task = Thread(target=self.get_work_queue,daemon=True)
                 listen.start()
-                keep = Thread(target=self.keep)
-                keep.daemon = True
                 keep.start()
+                task.start()
                 self.Sql_obj = SqliteTools.SqlTools(self.user, model='init')
             return int(data)
         except:
             return 2
 
-    def register(self,user: str,password: str) -> int:
+    def register(self, user: str, password: str) -> int:
+        """发起注册请求
+
+        Args:
+            user: 注册用户名
+            password: 注册用户密码
+
+        Returns:
+            None
+        """
         header = 'REGISTER'
         date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
@@ -119,8 +171,9 @@ class Client:
             return 2
 
     def listen(self):
+        """消息监听器"""
         while self.online:
-            data, address = self.sock.recvfrom(8192)
+            data, address = self.sock.recvfrom(9216)
             header,date,user,payload = data.decode('utf-8').split('\n\n',3)
             method = {
                 'MESSAGE': [self.message,date,user,payload],
@@ -136,9 +189,11 @@ class Client:
             method[header][0](*(method[header][1:]))
 
     def get_history(self):
+        """发起历史消息获取请求"""
         self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
 
     def message_color_init(self):
+        """消息颜色初始化"""
         self.messagebox.tag_add('other', tk.INSERT)
         self.messagebox.tag_config('other', foreground='blue')
         self.messagebox.tag_add('me', tk.INSERT)
@@ -147,6 +202,16 @@ class Client:
         self.messagebox.tag_config('system', foreground='gray')
 
     def insert_message(self,date: str,user: str,msg: str) -> None:
+        """向文本框中插入消息
+
+        Args:
+            date: 时间
+            user: 发信用户
+            msg: 消息内容
+
+        Returns:
+            None
+        """
         self.messagebox.configure(state='normal')
         if user == self.user:
             self.messagebox.insert(tk.INSERT, f'[{date}]{user}: {msg}\n','me')
@@ -159,7 +224,17 @@ class Client:
         self.messagebox.configure(state='disabled')
 
     @sql_operate
-    def message(self,date,source_user,payload):
+    def message(self, date: str, source_user: str, payload: str) -> None:
+        """处理接受到消息
+
+        Args:
+            date: 发信时间
+            source_user: 发信人
+            payload: 消息数据包，[收信目标,消息内容]
+
+        Returns:
+            None
+        """
         target, msg = payload.split('\n', 1)
         target = json.loads(target)
         t = time.localtime(float(date))
@@ -172,7 +247,16 @@ class Client:
             self.insert_message(date,source_user,msg)
 
     @sql_operate
-    def history(self,model,payload):
+    def history(self, model: str, payload: str) -> None:
+        """处理历史消息
+
+        Args:
+            model: 一个字符串标志操作目标，0标识群聊，1标识私聊，2标识消息接受完成
+            payload: 消息数据包
+
+        Returns:
+            None
+        """
         if model == '0':
             msg = json.loads(payload)
             self.Sql_obj.save_msg(*msg)
@@ -185,28 +269,40 @@ class Client:
             tkinter.messagebox.showinfo(title='esaychat:system',message='历史记录同步完成')
 
     def logout(self):
+        """退出登录"""
         self.online=0
 
     def keep(self):
+        """在线心跳"""
         while self.online:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self,header: str,payload: str,model:Literal['message','file'] = 'message') -> None:
-        def send_message(head: str, message: str, model) -> None:
+    def send(self, header: str, payload: str, model:Literal['message','file'] = 'message') -> None:
+        """消息发送函数
+
+        Args:
+            header: 请求头
+            payload: 请求载荷
+            model: 请求模式,文件传输/消息传输
+
+        Returns:
+            None
+        """
+        def send_message(head: str, message: str, mod: str) -> None:
             date = time.mktime(time.localtime())
             msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
             retry = 0
             ack_hash = hashlib.md5(msg).hexdigest()
             self.ackpool.append(ack_hash)
-            if model == 'message':
+            if mod == 'message':
                 while self.ack_check(ack_hash) and retry <= 5:
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
                     retry += 1
                 if retry > 5:
                     tkinter.messagebox.showerror(title=head,message='connect timeout')
-            elif model == 'file':
+            elif mod == 'file':
                 while self.ack_check(ack_hash):
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
@@ -218,28 +314,54 @@ class Client:
             task.add_done_callback(self.thread_pool_callback)
 
 
-    def ack(self, payload) -> None:
+    def ack(self, payload: str) -> None:
+        """ack消息处理
+
+        Args:
+            payload: ack包md5值
+
+        Returns:
+            None
+        """
         try:
             self.ackpool.remove(payload)
         except:
             pass
 
     def ack_check(self, flag: str) -> bool:
+        """检测ack包是否存在"""
         if flag in self.ackpool:
             return True
         return False
 
-    def chat(self,message: str):
+    def chat(self, message: str):
+        """发送聊天消息
+
+        Args:
+            message: 消息数据包,[收信目标]\n消息
+
+        Returns:
+            None
+        """
         header = 'MESSAGE'
         message = json.dumps(self.chat_page) + '\n' + message
         self.send(header,message)
 
     def get_chat_list(self):
+        """发起获得聊天列表请求"""
         header = 'GET_CHATS'
         self.send(header,' ')
 
     @sql_operate
-    def save_chat_list(self,payload):
+    def save_chat_list(self,payload: str):
+        """保存聊天列表
+
+        Args:
+            payload: 聊天列表数据包
+
+        Returns:
+            None
+        """
         friends = json.loads(payload)[0]
         groups = json.loads(payload)[1]
         self.Sql_obj.save_chats(1,friends)
@@ -250,23 +372,30 @@ class Client:
                 self.chat_list.insert(self.chat_group_list, index='end', tags=[json.dumps([0,_])], text=_)
 
     def get_requests_list(self):
+        """发起获取好友请求列表请求"""
         self.send('GET_ADD_REQUEST','')
 
-    @staticmethod
-    def format_request(text: str | list[str, str]) -> str:
-        if isinstance(text, list):
-            return f'{text[0]} -> {text[1]}'
-        return text
-
     @sql_operate
-    def update_requests_list(self,payload: str):
+    def update_requests_list(self,payload: str) -> None:
+        """更新好友请求列表
+
+        Args:
+            payload: 好友请求数据包
+
+        Returns:
+            None
+        """
+        def format_request(text: str | list[str, str]) -> str:
+            if isinstance(text, list):
+                return f'{text[0]} -> {text[1]}'
+            return text
         requests = json.loads(payload)
         trees = [self.my_fri_requests, self.my_group_requests, self.fri_requests, self.group_requests]
         self.Sql_obj.save_add_requests(1,requests[0])
         self.Sql_obj.save_add_requests(0,requests[1])
         for reqs,tree in zip(requests,trees):
             for _ in reqs:
-                node = self.request_list.insert(tree,'end',_,text=self.format_request(_))
+                node = self.request_list.insert(tree,'end',_,text=format_request(_))
                 if tree in trees[-2:]:
                     self.request_list.insert(node, 'end', tags=[json.dumps([_,1])], text='同意')
                     self.request_list.insert(node, 'end', tags=[json.dumps([_,0])], text='拒绝')
@@ -286,7 +415,7 @@ class Client:
                 self.save_chat_list(json.dumps(([target],[])))
         self.send('REPLY_REQUEST',json.dumps([target,res]))
 
-    def search(self,target: str) -> None:
+    def search(self, target: str) -> None:
         """发起搜索请求
 
         Args:
@@ -298,7 +427,7 @@ class Client:
         self.send('SEARCH',target)
 
     @sql_operate
-    def search_response(self,payload: str) -> None:
+    def search_response(self, payload: str) -> None:
         """响应搜索请求，在addfriend_page页面label处显示结果
 
         Args:
@@ -328,7 +457,7 @@ class Client:
             self.add_group_Btn.configure(state='normal',text='添加群聊')
 
     @sql_operate
-    def add_request(self,model:int ,target: str) -> None:
+    def add_request(self, model:int ,target: str) -> None:
         """发起添加好友/群聊请求
 
         Args:
@@ -360,7 +489,15 @@ class Client:
         self.save_chat_list(json.dumps([[],[groupname]]))
         tkinter.messagebox.showinfo('新建群聊','新建群聊成功')
 
-    def upload(self,files: list[bytes]) -> None:
+    def upload(self, files: list[bytes]) -> None:
+        """上传文件
+
+        Args:
+            files: 上传文件的的目录位置，二进制格式
+
+        Returns:
+            None
+        """
         for _ in files:
             with open(_.decode('gbk'),'rb') as file:
                 buf = file.read()
@@ -368,7 +505,7 @@ class Client:
                 file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
                 filename = file_name+extension
                 readable_hash = hashlib.md5(buf).hexdigest()
-                size = 4096
+                size = 8192
                 block = len(base64.b64encode(buf)) // size + 1
                 sub = 0
                 while sub <= block - 1:
@@ -377,21 +514,52 @@ class Client:
                     sub += 1
 
     def get_file_list(self):
+        """获取文件列表"""
         self.send('GET_FILES',json.dumps(self.chat_page),'message')
 
-    def file_list(self,payload):
+    def file_list(self, payload: str):
+        """处理文件列表
+
+        Args:
+            payload: 文件列表数据包
+
+        Returns:
+            None
+        """
         files = json.loads(payload)
         for file in files:
             self.file_table.insert('','end',values=file)
 
-    def get_download(self,sub,block,filename,md5):
+    def get_download(self, sub: None | int,block: None | int, filename: str, md5: str) -> None:
+        """发起下载请求
+
+        Args:
+            sub: 块号
+            block: 块数
+            filename: 文件名
+            md5: 文件md5值
+
+        Returns:
+            None
+        """
         payload = json.dumps([sub,block,filename,md5])
         self.send('DOWNLOAD',payload,'file')
 
-    def download(self,payload):
+    def download(self, payload: str) -> None:
+        """处理文件下载数据包
+
+        Args:
+            payload: 文件下载数据包
+
+        Returns:
+            None
+        """
         sub, block, filename, md5, byte = json.loads(payload)
         if md5 not in self.file_cache.keys():
             self.file_cache[md5] = [None] * block
+        if sub > 0 and self.file_cache[md5][sub - 1] is None:
+            self.get_download(sub-1,block,filename,md5)
+            return
         self.file_cache[md5][sub] = base64.b64decode(byte)
         if None not in self.file_cache[md5]:
             buf = bytes()
@@ -406,6 +574,15 @@ class Client:
 
     @sql_operate
     def switch_chat(self, model: int, target: str) -> None:
+        """切换页面
+
+        Args:
+            model: 页面标识，标志私聊或群聊
+            target: 聊天对象
+
+        Returns:
+            None
+        """
         self.chat_page=[model, target]
         msgs = self.Sql_obj.get_msg(model,target)
         for msg in msgs:

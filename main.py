@@ -76,6 +76,7 @@ def run_chat():
     tools.chat_fir_list = page_chat.fri_list
     tools.chat_group_list = page_chat.group_list
     tools.messagebox = page_chat.msg
+    tools.up_down_task = page_chat.work_task
     tools.message_color_init()
 
     tools.get_chat_list()

@@ -14,7 +14,8 @@ class ChatGui(tk.Tk):
         self.btn_send = tk.Button()
         self.btn_face = tk.Button()
         self.btn_file = tk.Button()
-        self.btn_addfri = tk.Button
+        self.btn_addfri = tk.Button()
+        self.work_task = tk.StringVar()
         self.chat_list = ttk.Treeview()
         self.chat_page = tk.StringVar()
         self.chat_page.set('system')
@@ -34,6 +35,8 @@ class ChatGui(tk.Tk):
 
         tk.Label(self, textvariable=self.chat_page).place(x=0, y=0)
         tk.Label(self, text="输入").place(x=0, y=420)
+        tk.Label(self, textvariable=self.work_task).place(x=0,y=380)
+
 
         self.msg = tk.Text(self, width=110, height=23)
         self.msg.place(x=0, y=30)
@@ -97,5 +100,3 @@ class ChatGui(tk.Tk):
         msg = '\n'.join(files)
         res = tkinter.messagebox.askokcancel('上传文件',f'是否上传以下文件{msg}')
         return res
-
-
