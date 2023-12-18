@@ -69,7 +69,7 @@ class SQL_Operate:
         mysql_port = 3306
         mysql_db = 'easychat'
         mysql_user = 'root'
-        mysql_pwd = 'aa123456bb'
+        mysql_pwd = 'aa126456bb'
 
 
         self.conn = pymysql.connect(host=mysql_host,port=mysql_port,user=mysql_user,password=mysql_pwd,charset='utf8mb4')
@@ -122,24 +122,3 @@ class SQL_Operate:
         self.conn.commit()
         return 1
 
-    def save_msg(self,date,usr,model,target,msg):
-        t = time.localtime(float(date))
-        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-        if model:
-            sql_select = (f'INSERT INTO private_chat_history (target_user, source_user, time, content)'
-                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
-        else:
-            sql_select = (f'INSERT INTO group_chat_history (target_group, source_user, time, content)'
-                          f' VALUES ("{target}","{usr}","{date}","{msg}")')
-        self.cur.execute(sql_select)
-        self.conn.commit()
-
-    def get_msg(self,model,user,target):
-        if model:
-            sql_select = (f'SELECT * FROM private_chat_history where (target_user="{target}" and source_user="{user}")'
-                          f'or (target_user="{user}" and source_user="{target}")')
-        else:
-            sql_select = f'SELECT * FROM group_chat_history where target_group={target}'
-        self.cur.execute(sql_select)
-        msgs = self.cur.fetchall()
-        return msgs

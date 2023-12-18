@@ -34,7 +34,7 @@ class ChatGui:
         self.input_Text = Text(self.init_window_name, width=110, height=4)
         self.input_Text.place(x=0,y=470)
 
-        self.send_button = Button(self.init_window_name, text="send", bg="lightblue", width=10,command=self.send)
+        self.send_button = Button(self.init_window_name, text="send", bg="lightblue", width=10)
         self.send_button.place(x=690,y=540)
 
         self.face_button = Button(self.init_window_name, text="表情包", width=10, )
@@ -73,30 +73,6 @@ class ChatGui:
             # TODO:唤起好友聊天页
             print(self.fri_list.selection())
         self.fri_list.bind("<Double-Button-1>", mouse_clicked)
-
-        def entry(event):
-            self.send()
-            return 'break'
-        self.input_Text.bind("<Return>", entry)
-
-
-        msg = Thread(target=self.get_msg)
-        msg.start()
-
-
-    def get_msg(self):
-        while True:
-            time.sleep(10)
-            self.tools.get_msg(json.dumps(self.chat_page))
-
-    def send(self):
-        # chat_model标识了群聊和私聊以及对应目标
-        msg = json.dumps(self.chat_page) + '\n' + self.input_Text.get('1.0','end')[:-1]
-        flag = self.tools.chat(msg)
-        if not flag:
-            tkinter.messagebox.showerror('Error', '连接服务器超时请重试')
-        else:
-            self.input_Text.delete('1.0','end')
 
     def switch(self, oldwin):
         init_window = Tk()

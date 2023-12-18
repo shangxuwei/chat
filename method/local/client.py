@@ -2,6 +2,7 @@ import socket
 import time
 from threading import Thread
 import hashlib
+import traceback
 
 
 class Client:
@@ -14,50 +15,6 @@ class Client:
 
         self.ackpool = []
 
-
-    def listen(self):
-        while True:
-            data, address = self.sock.recvfrom(4096)
-            header,date,user,payload = data.decode('utf-8').split('\n\n',3)
-            method = {
-                'MESSAGE': [self.message,date,user,payload],
-                'UPLOAD': self.upload,
-                'DOWNLOAD': self.download,
-                'ERROR': [self.error,'1'],
-                'ACK': [self.ack,date,user,payload]
-            }
-            method[header][0](*(method[header][1:]))
-
-    def keep(self):
-        while True:
-            self.send("ONLINE",self.user,'online')
-            time.sleep(60)
-
-    def send(self,header,user,payload):
-        date = time.mktime(time.localtime())
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{payload}".encode('utf-8')
-        retry = 0
-        while not self.ack_check(hash(f'{header}{date}{user}')) and retry <= 5:
-            self.sock.sendto(msg, self.service)
-            time.sleep(0.01)
-            retry += 1
-        return retry <= 5
-
-    def ack(self, header, date, user):
-        self.ackpool.append(hash(f'{header}{date}{user}'))
-
-    def ack_check(self, flag):
-        if flag not in self.ackpool:
-            return False
-        self.ackpool.remove(flag)
-        return True
-
-    def message(self,date,user,payload):
-        t = time.localtime(float(date))
-        date = f'{t.tm_year},{t.tm_mon},{t.tm_mday},{t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-
-        print(f'[{date}]{user}: {payload}')
-        return f'[{date}]{user}: {payload}'
 
     def login(self,user,password):
         header = 'LOGIN'
@@ -74,12 +31,9 @@ class Client:
             data = data.decode("utf-8")
             if int(data):
                 self.user = user
-                listen = Thread(target=self.listen)
-                listen.start()
-                keep = Thread(target=self.keep)
-                keep.start()
             return int(data)
         except:
+            traceback.print_exc()
             return 2
 
     def register(self,user,password):
@@ -98,22 +52,3 @@ class Client:
             return int(data)
         except:
             return 2
-
-    def chat(self,message):
-        header = 'MESSAGE'
-        name = self.user
-        flag = self.send(header,name,message)
-        return flag
-
-    def get_msg(self,chat_page):
-        header = 'GET'
-        self.send(header,self.user,chat_page)
-
-    def upload(self):
-        pass
-
-    def download(self):
-        pass
-
-    def error(self,l):
-        print('error')
