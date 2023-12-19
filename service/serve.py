@@ -1,12 +1,14 @@
 import base64
+import hashlib
+import json
+import logging
 import socket
 import threading
 import time
 import traceback
-import SQLTools
-import json
-import logging
-import hashlib
+
+from service import SQLTools
+
 logging.basicConfig(filename='log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)

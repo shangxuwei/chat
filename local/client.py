@@ -1,17 +1,19 @@
+import base64
+import hashlib
+import json
+import logging
+import os
 import socket
 import time
-from threading import Thread
 import tkinter as tk
-from tkinter import ttk
-import json
-import hashlib
-from local import SqliteTools
-from concurrent.futures import ThreadPoolExecutor
 import tkinter.messagebox
-import base64
-import os
+from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
+from tkinter import ttk
 from typing import *
-import logging
+
+from local import SqliteTools
+
 logging.basicConfig(filename='local_log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)
