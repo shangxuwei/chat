@@ -9,7 +9,7 @@ import traceback
 
 from service import SQLTools
 
-logging.basicConfig(filename='log.txt',
+logging.basicConfig(filename='service_log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)
 logging.disable(logging.DEBUG)
