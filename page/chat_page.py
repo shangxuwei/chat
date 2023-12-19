@@ -12,7 +12,6 @@ class ChatGui(tk.Tk):
         self.input_Text = tk.Text()
         self.msg = tk.Text()
         self.btn_send = tk.Button()
-        self.btn_face = tk.Button()
         self.btn_file = tk.Button()
         self.btn_addfri = tk.Button()
         self.work_task = tk.StringVar()
@@ -47,9 +46,6 @@ class ChatGui(tk.Tk):
 
         self.btn_send = tk.Button(self, text="send", bg="lightblue", width=10)
         self.btn_send.place(x=690,y=540)
-
-        self.btn_face = tk.Button(self, text="表情包", width=10)
-        self.btn_face.place(x=440,y=410)
 
         self.btn_file = tk.Button(self, text="文件", width=10)
         self.btn_file.place(x=620,y=410)

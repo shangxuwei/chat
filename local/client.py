@@ -247,6 +247,9 @@ class Client:
             self.Sql_obj.save_msg(target[0], date, target[1], source_user, msg)
         if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == source_user):
             self.insert_message(date,source_user,msg)
+        else:
+            page = target[1] if target[1] != self.user and target != 0 else source_user
+            self.chat_list.tag_configure(json.dumps([target[0], page]), foreground='blue')
 
     @sql_operate
     def history(self, model: str, payload: str) -> None:
@@ -588,5 +591,6 @@ class Client:
         """
         self.chat_page=[model, target]
         msgs = self.Sql_obj.get_msg(model,target)
+        self.chat_list.tag_configure(json.dumps(self.chat_page), foreground='black')
         for msg in msgs:
             self.insert_message(msg[2],msg[4],msg[5])
