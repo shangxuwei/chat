@@ -15,7 +15,7 @@ import logging
 logging.basicConfig(filename='local_log.txt',
                     format = '%(asctime)s - %(levelname)s - %(message)s - %(funcName)s',
                     level=logging.DEBUG)
-
+logging.disable(logging.DEBUG)
 
 class Client:
     """客户端运行类
@@ -88,7 +88,7 @@ class Client:
     @staticmethod
     def thread_pool_callback(worker):
         """线程池故障捕获"""
-        logging.info("called thread pool executor callback function")
+        logging.debug("called thread pool executor callback function")
         worker_exception = worker.exception()
         if worker_exception:
             logging.exception("Worker return exception: {}".format(worker_exception))
@@ -569,6 +569,7 @@ class Client:
                 file.write(buf)
             self.get_download(block,block,filename,md5)
             del self.file_cache[md5]
+            tkinter.messagebox.showinfo('下载',f'{filename}下载完成')
             return
         self.get_download(sub+1,block,filename,md5)
 

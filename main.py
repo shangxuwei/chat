@@ -1,6 +1,5 @@
 import json
 import tkinter as tk
-import tkinter.messagebox
 import time
 from local import client
 from page import login_page,register_page,chat_page,addfriend_page,file_page

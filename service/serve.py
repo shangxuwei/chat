@@ -422,7 +422,10 @@ class Service:
         if sub is None:
             sub = 0
         if sub == block:
-            del self.dw_file_cache[md5]
+            try:
+                del self.dw_file_cache[md5]
+            except KeyError:
+                pass
             return
         size = 8192
         if md5 not in self.dw_file_cache.keys():
