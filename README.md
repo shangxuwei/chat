@@ -6,24 +6,22 @@
 
 ```
 chat
-├── Doc
-│    ├── Database.md
-│    └── Develpment.md
 ├── local
 │    ├── client.py
 │    └── SqliteTools.py
-├── main.py
 ├── page
 │    ├── addfriend_page.py
 │    ├── chat_page.py
-│    ├── git_file_demo.py
+│    ├── file_page.py
 │    ├── login_page.py
 │    └── register_page.py
+├── service
+│   ├── serve.py
+│   └── SQLTools.py
+├── main.py
 ├── README.md
 ├── requirements.txt
-└── service
-    ├── serve.py
-    └── SQLTools.py
+└── run_service.py
 ```
 
 
