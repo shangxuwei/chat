@@ -14,7 +14,7 @@ logging.basicConfig(filename='service_log.txt',
                     level=logging.DEBUG)
 logging.disable(logging.DEBUG)
 
-BUF_SIZE = 1024
+BUF_SIZE = 1024 # 上传下载分片字节大小
 
 class Service:
     """服务端运行类
