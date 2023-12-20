@@ -34,12 +34,10 @@ DBS = {
                    'FOREIGN KEY (target_group) REFERENCES groupinfo(group_name)'
     },
     'file':{
-        'source_user': 'varchar(33) NOT NULL',
         'time': 'datetime NOT NULL',
         'filecontent': 'longblob NOT NULL',
         'md5': 'varchar(32) NOT NULL',
         'KEY': ['md5'],
-        'FOREIGN': 'FOREIGN KEY (source_user) REFERENCES userinfo(username)'
     },
     'file_public':{
         'id': 'int AUTO_INCREMENT NOT NULL',
@@ -50,7 +48,9 @@ DBS = {
         'downloadable_group': 'varchar(33)',
         'KEY': ['id'],
         'FOREIGN': 'FOREIGN KEY (file_md5) REFERENCES file(md5),'
-                   'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username)'
+                   'FOREIGN KEY (source) REFERENCES userinfo(username),'
+                   'FOREIGN KEY (downloadable_user) REFERENCES userinfo(username),'
+                   'FOREIGN KEY (downloadable_group) REFERENCES groupinfo(group_name)'
     },
     'friends':{
         'username1': 'varchar(33) NOT NULL',
@@ -437,8 +437,8 @@ class SQL_Operate:
         self.cur.execute(sql,(md5,target_name))
         flag = self.cur.fetchall()[0][0]
         if flag == 0:
-            sql = 'INSERT INTO file (source_user, time, filecontent, md5) VALUES (%s,%s,%s,%s)'
-            self.cur.execute(sql,(source,date,data,md5))
+            sql = 'INSERT INTO file (time, filecontent, md5) VALUES (%s,%s,%s)'
+            self.cur.execute(sql,(date,data,md5))
             sql = ('INSERT INTO file_public (filename, file_md5, source, downloadable_user,downloadable_group)'
                    '  VALUES (%s,%s,%s,%s,%s)')
             if model:
