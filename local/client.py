@@ -19,6 +19,8 @@ logging.basicConfig(filename='local_log.txt',
                     level=logging.DEBUG)
 logging.disable(logging.DEBUG)
 
+BUF_SIZE = 1024 # 上传下载分片字节大小
+
 class Client:
     """客户端运行类
 
@@ -98,17 +100,24 @@ class Client:
     def get_work_queue(self):
         """下载进度刷新"""
         while True:
-            if self.up_down_task is None:
-                time.sleep(0.5)
-                continue
-            download_task = len(self.file_cache.keys())
-            percent = None
-            if download_task != 0:
-                data = list(self.file_cache.values())[0]
-                percent = '%.2f' % ((len(data)-data.count(None))/len(data)*100)
-            msg = f'下载任务数: {download_task} : {percent}% (百分比仅显示第一个任务)'
-            self.up_down_task.set(msg)
-            time.sleep(2)
+            try:
+                if self.up_down_task is None:
+                    time.sleep(0.5)
+                    continue
+                if self.message_pool._work_queue.qsize() > 0:
+                    flag = '正在传输'
+                else:
+                    flag = '无连接'
+                download_task = len(self.file_cache.keys())
+                percent = None
+                if download_task != 0:
+                    data = list(self.file_cache.values())[0]
+                    percent = '%.2f' % ((len(data)-data.count(None))/len(data)*100)
+                msg = f'文件传输: {flag} | 下载任务数: {download_task} : {percent}% (百分比仅显示第一个任务)'
+                self.up_down_task.set(msg)
+                time.sleep(2)
+            except RuntimeError:
+                break
 
     def login(self, user: str, password: str) -> int:
         """发起登录请求
@@ -135,9 +144,12 @@ class Client:
             if int(data):
                 self.online = 1
                 self.user = user
-                listen = Thread(target=self.listen,daemon=True)
-                keep = Thread(target=self.keep,daemon=True)
-                task = Thread(target=self.get_work_queue,daemon=True)
+                listen = Thread(target=self.listen)
+                keep = Thread(target=self.keep)
+                task = Thread(target=self.get_work_queue)
+                listen.daemon = True
+                keep.daemon = True
+                task.daemon = True
                 listen.start()
                 keep.start()
                 task.start()
@@ -510,11 +522,15 @@ class Client:
                 file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
                 filename = file_name+extension
                 readable_hash = hashlib.md5(buf).hexdigest()
-                size = 8192
-                block = len(base64.b64encode(buf)) // size + 1
+                block = len(base64.b64encode(buf)) // BUF_SIZE + 1
                 sub = 0
                 while sub <= block - 1:
-                    payload = json.dumps([self.chat_page,filename, sub, block, b64_buf[sub*size:(sub+1)*size].decode(),readable_hash])
+                    payload = json.dumps([self.chat_page,
+                                          filename,
+                                          sub,
+                                          block,
+                                          b64_buf[sub*BUF_SIZE:(sub+1)*BUF_SIZE].decode(),
+                                          readable_hash])
                     self.send('UPLOAD',payload,'file')
                     sub += 1
 

@@ -14,6 +14,8 @@ logging.basicConfig(filename='service_log.txt',
                     level=logging.DEBUG)
 logging.disable(logging.DEBUG)
 
+BUF_SIZE = 1024
+
 class Service:
     """服务端运行类
 
@@ -429,13 +431,12 @@ class Service:
             except KeyError:
                 pass
             return
-        size = 8192
         if md5 not in self.dw_file_cache.keys():
             logging.info(f'require file:{filename}  / md5:{md5}')
             buf = self.SQL_obj.get_file(filename,md5)
             self.dw_file_cache[md5] = base64.b64encode(buf)
-        pak = self.dw_file_cache[md5][sub*size: (sub+1)*size].decode()
-        block = len(self.dw_file_cache[md5]) // size + 1
+        pak = self.dw_file_cache[md5][sub*BUF_SIZE: (sub+1)*BUF_SIZE].decode()
+        block = len(self.dw_file_cache[md5]) // BUF_SIZE + 1
         self.sock.sendto(f'DOWNLOAD\n\n\n\n\n\n{json.dumps([sub,block,filename,md5,pak])}'.encode('utf-8'),self.ip_pool[user])
 
 

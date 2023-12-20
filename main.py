@@ -195,5 +195,6 @@ if __name__ == "__main__":
     try:
         tools = client.Client()
         run_login()
+        tools.message_pool.shutdown()
     except KeyboardInterrupt:
         clean()
