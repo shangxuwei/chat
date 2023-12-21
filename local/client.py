@@ -520,10 +520,10 @@ class Client:
             None
         """
         for _ in files:
-            with open(_.decode('gbk'),'rb') as file:
+            with open(_,'rb') as file:
                 buf = file.read()
                 b64_buf = base64.b64encode(buf)
-                file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
+                file_name, extension = os.path.splitext(os.path.basename(_))
                 filename = file_name+extension
                 readable_hash = hashlib.md5(buf).hexdigest()
                 block = len(base64.b64encode(buf)) // BUF_SIZE + 1
@@ -599,10 +599,8 @@ class Client:
         self.get_download(sub+1,block,filename,md5)
 
     def close_threads_pool(self):
-        for feature in self.upload_pool._threads:
-            feature._stop()
-        for feature in self.download_pool._threads:
-            feature._stop()
+        self.download_pool.shutdown(wait=False,cancel_futures=True)
+        self.upload_pool.shutdown(wait=False,cancel_futures=True)
 
     @sql_operate
     def switch_chat(self, model: int, target: str) -> None:

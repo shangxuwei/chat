@@ -4,7 +4,7 @@ import time
 from local import client
 from page import login_page,register_page,chat_page,addfriend_page,file_page
 import os
-import windnd
+import tkinterdnd2
 import atexit
 
 @atexit.register
@@ -92,10 +92,12 @@ def run_chat():
     page_chat.input_Text.bind("<Shift-Return>", enter)
 
     def drag(files):
+        files = page_chat.input_Text.tk.splitlist(files.data)
         res = page_chat.upload_file(files)
         if res:
             tools.upload(files)
-    windnd.hook_dropfiles(page_chat.input_Text,func=drag)
+    page_chat.input_Text.drop_target_register(tkinterdnd2.DND_FILES)
+    page_chat.input_Text.dnd_bind('<<Drop>>', drag)
 
     def mouse_clicked(event):
         try:
