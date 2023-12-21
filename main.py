@@ -132,10 +132,13 @@ def run_file_page():
     tools.get_file_list()
 
     def mouse_clicked(event):
-        items = page_file.table.selection()[0]
-        values = page_file.table.item(items)
-        if page_file.download_confirm(values['values'][0],values['values'][2]):
-            tools.get_download(None,None,values['values'][0],values['values'][2])
+        try:
+            items = page_file.table.selection()[0]
+            values = page_file.table.item(items)
+            if page_file.download_confirm(values['values'][0],values['values'][2]):
+                tools.get_download(None,None,values['values'][0],values['values'][2])
+        except IndexError:
+            pass
     page_file.table.bind("<Double-Button-1>",mouse_clicked)
 
     page_file.mainloop()
@@ -195,6 +198,6 @@ if __name__ == "__main__":
     try:
         tools = client.Client()
         run_login()
-        tools.message_pool.shutdown()
+        tools.close_threads_pool()
     except KeyboardInterrupt:
         clean()
