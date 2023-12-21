@@ -435,10 +435,14 @@ class SQL_Operate:
         else:
             sql = 'SELECT COUNT(file_md5) FROM file_public WHERE (file_md5=%s AND downloadable_group=%s) LIMIT 1'
         self.cur.execute(sql,(md5,target_name))
-        flag = self.cur.fetchall()[0][0]
-        if flag == 0:
+        file_sent = self.cur.fetchall()[0][0]
+        sql = 'SELECT COUNT(md5) FROM file WHERE (md5=%s) LIMIT 1'
+        self.cur.execute(sql,(md5,))
+        file_exist = self.cur.fetchall()[0][0]
+        if file_exist == 0:
             sql = 'INSERT INTO file (time, filecontent, md5) VALUES (%s,%s,%s)'
             self.cur.execute(sql,(date,data,md5))
+        if file_sent == 0:
             sql = ('INSERT INTO file_public (filename, file_md5, source, downloadable_user,downloadable_group)'
                    '  VALUES (%s,%s,%s,%s,%s)')
             if model:
