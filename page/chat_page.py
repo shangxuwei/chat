@@ -2,14 +2,15 @@ import time
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
-from threading import Thread
+import tkinterdnd2
 import json
 
 
-class ChatGui(tk.Tk):
+class ChatGui(tkinterdnd2.Tk):
     def __init__(self):
         super().__init__()
         self.input_Text = tk.Text()
+        self.input_Text.drop_target_register(tkinterdnd2.DND_FILES)
         self.msg = tk.Text()
         self.btn_send = tk.Button()
         self.btn_file = tk.Button()
@@ -92,7 +93,6 @@ class ChatGui(tk.Tk):
 
     @staticmethod
     def upload_file(files):
-        files = [_.decode('gbk') for _ in files]
         msg = '\n'.join(files)
         res = tkinter.messagebox.askokcancel('上传文件',f'是否上传以下文件{msg}')
         return res

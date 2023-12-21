@@ -4,7 +4,7 @@ import time
 from local import client
 from page import login_page,register_page,chat_page,addfriend_page,file_page
 import os
-import windnd
+import tkinterdnd2
 import atexit
 
 @atexit.register
@@ -92,10 +92,12 @@ def run_chat():
     page_chat.input_Text.bind("<Shift-Return>", enter)
 
     def drag(files):
+        files = page_chat.input_Text.tk.splitlist(files.data)
         res = page_chat.upload_file(files)
         if res:
             tools.upload(files)
-    windnd.hook_dropfiles(page_chat.input_Text,func=drag)
+    page_chat.input_Text.drop_target_register(tkinterdnd2.DND_FILES)
+    page_chat.input_Text.dnd_bind('<<Drop>>', drag)
 
     def mouse_clicked(event):
         try:
@@ -132,10 +134,13 @@ def run_file_page():
     tools.get_file_list()
 
     def mouse_clicked(event):
-        items = page_file.table.selection()[0]
-        values = page_file.table.item(items)
-        if page_file.download_confirm(values['values'][0],values['values'][2]):
-            tools.get_download(None,None,values['values'][0],values['values'][2])
+        try:
+            items = page_file.table.selection()[0]
+            values = page_file.table.item(items)
+            if page_file.download_confirm(values['values'][0],values['values'][2]):
+                tools.get_download(None,None,values['values'][0],values['values'][2])
+        except IndexError:
+            pass
     page_file.table.bind("<Double-Button-1>",mouse_clicked)
 
     page_file.mainloop()
@@ -195,6 +200,6 @@ if __name__ == "__main__":
     try:
         tools = client.Client()
         run_login()
-        tools.message_pool.shutdown()
+        tools.close_threads_pool()
     except KeyboardInterrupt:
         clean()

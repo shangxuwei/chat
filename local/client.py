@@ -7,7 +7,7 @@ import socket
 import time
 import tkinter as tk
 import tkinter.messagebox
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed, CancelledError
 from threading import Thread
 from tkinter import ttk
 from typing import *
@@ -45,7 +45,8 @@ class Client:
         self.user = None
 
         self.ackpool = []
-        self.message_pool = ThreadPoolExecutor(max_workers=40)
+        self.upload_pool = ThreadPoolExecutor(max_workers=40)
+        self.download_pool = ThreadPoolExecutor(max_workers=40)
         self.online = 0
 
         self.messagebox: tk.Text = None # 聊天消息框
@@ -104,7 +105,7 @@ class Client:
                 if self.up_down_task is None:
                     time.sleep(0.5)
                     continue
-                if self.message_pool._work_queue.qsize() > 0:
+                if self.upload_pool._work_queue.qsize() > 0:
                     flag = '正在传输'
                 else:
                     flag = '无连接'
@@ -113,7 +114,7 @@ class Client:
                 if download_task != 0:
                     data = list(self.file_cache.values())[0]
                     percent = '%.2f' % ((len(data)-data.count(None))/len(data)*100)
-                msg = f'文件传输: {flag} | 下载任务数: {download_task} : {percent}% (百分比仅显示第一个任务)'
+                msg = f'文件上传: {flag} | 下载任务数: {download_task} : {percent}% (百分比仅显示第一个任务)'
                 self.up_down_task.set(msg)
                 time.sleep(2)
             except RuntimeError:
@@ -295,7 +296,7 @@ class Client:
             self.send("ONLINE",'online')
             time.sleep(60)
 
-    def send(self, header: str, payload: str, model:Literal['message','file'] = 'message') -> None:
+    def send(self, header: str, payload: str, model:Literal['message','upload','download'] = 'message') -> None:
         """消息发送函数
 
         Args:
@@ -326,8 +327,11 @@ class Client:
         if model == 'message':
             work = Thread(target=send_message,args=(header,payload,model))
             work.start()
-        elif model == 'file':
-            task = self.message_pool.submit(send_message,header,payload,model)
+        elif model == 'upload':
+            task = self.upload_pool.submit(send_message,header,payload,'file')
+            task.add_done_callback(self.thread_pool_callback)
+        elif model == 'download':
+            task = self.download_pool.submit(send_message,header,payload,'file')
             task.add_done_callback(self.thread_pool_callback)
 
 
@@ -516,10 +520,10 @@ class Client:
             None
         """
         for _ in files:
-            with open(_.decode('gbk'),'rb') as file:
+            with open(_,'rb') as file:
                 buf = file.read()
                 b64_buf = base64.b64encode(buf)
-                file_name, extension = os.path.splitext(os.path.basename(files[0].decode('gbk')))
+                file_name, extension = os.path.splitext(os.path.basename(_))
                 filename = file_name+extension
                 readable_hash = hashlib.md5(buf).hexdigest()
                 block = len(base64.b64encode(buf)) // BUF_SIZE + 1
@@ -531,7 +535,7 @@ class Client:
                                           block,
                                           b64_buf[sub*BUF_SIZE:(sub+1)*BUF_SIZE].decode(),
                                           readable_hash])
-                    self.send('UPLOAD',payload,'file')
+                    self.send('UPLOAD',payload,'upload')
                     sub += 1
 
     def get_file_list(self):
@@ -564,7 +568,7 @@ class Client:
             None
         """
         payload = json.dumps([sub,block,filename,md5])
-        self.send('DOWNLOAD',payload,'file')
+        self.send('DOWNLOAD',payload,'download')
 
     def download(self, payload: str) -> None:
         """处理文件下载数据包
@@ -593,6 +597,10 @@ class Client:
             tkinter.messagebox.showinfo('下载',f'{filename}下载完成')
             return
         self.get_download(sub+1,block,filename,md5)
+
+    def close_threads_pool(self):
+        self.download_pool.shutdown(wait=False,cancel_futures=True)
+        self.upload_pool.shutdown(wait=False,cancel_futures=True)
 
     @sql_operate
     def switch_chat(self, model: int, target: str) -> None:

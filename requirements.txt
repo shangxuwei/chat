@@ -1,2 +1,2 @@
 PyMySQL==1.1.0
-windnd==1.0.7
+tkinterdnd2~=0.3.0
