@@ -7,7 +7,7 @@ import socket
 import time
 import tkinter as tk
 import tkinter.messagebox
-from concurrent.futures import ThreadPoolExecutor, as_completed, CancelledError
+from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 from tkinter import ttk
 from typing import *
