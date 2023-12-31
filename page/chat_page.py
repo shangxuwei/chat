@@ -26,6 +26,7 @@ class ChatGui(tkinterdnd2.Tk):
     def run(self):
         screenWidth = self.winfo_screenwidth()
         screenHeight = self.winfo_screenheight()
+        self.input_Text.configure(state='disabled')
         width = 1080
         height = 600
         left = (screenWidth - width) / 2

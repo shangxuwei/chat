@@ -21,6 +21,11 @@ logging.disable(logging.DEBUG)
 
 BUF_SIZE = 1024 # 上传下载分片字节大小
 
+def time_FloatToStr(f_time: float):
+    t = time.localtime(f_time)
+    date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
+    return date
+
 class Client:
     """客户端运行类
 
@@ -130,29 +135,30 @@ class Client:
         Returns:
             None
         """
-        header = 'LOGIN'
-        date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
         md5_object.update(password.encode('utf-8'))
         md5_result = md5_object.hexdigest()
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
+        data = {
+            'header': 'LOGIN',
+            'user': user,
+            'pwd': md5_result
+        }
+        msg = json.dumps(data).encode('utf-8')
         self.sock.sendto(msg,self.service)
+        # Wait for a reply
         try:
             self.sock.settimeout(1)
             data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
             data = data.decode("utf-8")
-            if int(data):
+            if int(data) == 1:
                 self.online = 1
                 self.user = user
                 listen = Thread(target=self.listen)
-                keep = Thread(target=self.keep)
                 task = Thread(target=self.get_work_queue)
                 listen.daemon = True
-                keep.daemon = True
                 task.daemon = True
                 listen.start()
-                keep.start()
                 task.start()
                 self.Sql_obj = SqliteTools.SqlTools(self.user, model='init')
             return int(data)
@@ -169,13 +175,17 @@ class Client:
         Returns:
             None
         """
-        header = 'REGISTER'
-        date = time.mktime(time.localtime())
         md5_object = hashlib.md5()
         md5_object.update(password.encode('utf-8'))
         md5_result = md5_object.hexdigest()
-        msg = f"{header}\n\n{date}\n\n{user}\n\n{md5_result}".encode('utf-8')
+        data = {
+            'header': 'REGISTER',
+            'user': user,
+            'pwd': md5_result
+        }
+        msg = json.dumps(data).encode('utf-8')
         self.sock.sendto(msg,self.service)
+        # Wait for a reply
         try:
             self.sock.settimeout(1)
             data, address = self.sock.recvfrom(8192)
@@ -189,23 +199,27 @@ class Client:
         """消息监听器"""
         while self.online:
             data, address = self.sock.recvfrom(9216)
-            header,date,user,payload = data.decode('utf-8').split('\n\n',3)
+            data = json.loads(data)
             method = {
-                'MESSAGE': [self.message,date,user,payload],
-                'DOWNLOAD': [self.download,payload],
-                'LOGOUT':[self.logout],
-                'ACK': [self.ack,payload],
-                'FILES': [self.file_list,payload],
-                'CHAT_LIST': [self.save_chat_list,payload],
-                'ADD_RESPONSE': [self.update_requests_list,payload],
-                'SEARCH_RESPONSE': [self.search_response,payload],
-                'HISTORY':[self.history,user,payload]
+                'MESSAGE': self.message,
+                'DOWNLOAD': self.download,
+                'LOGOUT':self.logout,
+                'ACK': self.ack,
+                'FILES': self.handle_file_list,
+                'CHAT_LIST': self.save_chat_list,
+                'ADD_RESPONSE': self.update_requests_list,
+                'SEARCH_RESPONSE': self.search_response,
+                'HISTORY': self.history
             }
-            method[header][0](*(method[header][1:]))
+            method[data['header']](data)
 
     def get_history(self):
         """发起历史消息获取请求"""
-        self.sock.sendto(f'GET_MESSAGE_HISTORY\n\n\n\n{self.user}\n\n'.encode('utf-8'),self.service)
+        data = {
+            'header': 'GET_MESSAGE_HISTORY',
+            'user': self.user
+        }
+        self.send(data)
 
     def message_color_init(self):
         """消息颜色初始化"""
@@ -239,113 +253,121 @@ class Client:
         self.messagebox.configure(state='disabled')
 
     @sql_operate
-    def message(self, date: str, source_user: str, payload: str) -> None:
+    def message(self, data: dict) -> None:
         """处理接受到消息
 
         Args:
-            date: 发信时间
-            source_user: 发信人
-            payload: 消息数据包，[收信目标,消息内容]
+            data:
+                header: 'MESSAGE',
+                date: 时间戳 (float),
+                source: 发信用户名 (str),
+                target: 收信目标 (list[int,str]),
+                message: 消息内容 (str)
 
         Returns:
             None
         """
-        target, msg = payload.split('\n', 1)
-        target = json.loads(target)
-        t = time.localtime(float(date))
-        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
-        if source_user != self.user and target[0] == 1:
-            self.Sql_obj.save_msg(target[0], date, source_user, source_user, msg)
+        if data['source'] != self.user and data['target'][0] == 1:
+            self.Sql_obj.save_msg(data['target'][0],
+                                  time_FloatToStr(data['date']),
+                                  data['source'],
+                                  data['source'],
+                                  data['message'])
         else:
-            self.Sql_obj.save_msg(target[0], date, target[1], source_user, msg)
-        if target == self.chat_page or (self.user == target[1] and self.chat_page[1] == source_user):
-            self.insert_message(date,source_user,msg)
+            self.Sql_obj.save_msg(data['target'][0],
+                                  time_FloatToStr(data['date']),
+                                  data['target'][1],
+                                  data['source'],
+                                  data['message'])
+        if data['target'] == self.chat_page or (self.user == data['target'][1] and self.chat_page[1] == data['source']):
+            self.insert_message(time_FloatToStr(data['date']), data['source'], data['message'])
         else:
-            page = target[1] if target[1] != self.user and target != 0 else source_user
-            self.chat_list.tag_configure(json.dumps([target[0], page]), foreground='blue')
+            page = data['target'][1] if data['target'][1] != self.user else data['source']
+            self.chat_list.tag_configure(json.dumps([data['target'][0], page]), foreground='blue')
 
     @sql_operate
-    def history(self, model: str, payload: str) -> None:
+    def history(self, data: dict) -> None:
         """处理历史消息
 
         Args:
-            model: 一个字符串标志操作目标，0标识群聊，1标识私聊，2标识消息接受完成
-            payload: 消息数据包
+            data:
+                header: 'HISTORY'
+                model: 一个字符串标志操作目标，0标识群聊，1标识私聊，2标识消息接受完成
+                payload: 消息数据包
 
         Returns:
             None
         """
-        if model == '0':
-            msg = json.loads(payload)
-            self.Sql_obj.save_msg(*msg)
-        elif model == '1':
-            msg = json.loads(payload)
+        if data['model'] == 0:
+            self.Sql_obj.save_msg(*data['msg'])
+        elif data['model'] == 1:
+            msg = data['msg']
             page = msg[1] if msg[1] != self.user else msg[2]
-            self.Sql_obj.save_msg(int(model), msg[3], page, msg[2], msg[4])
-        elif model == '2':
+            self.Sql_obj.save_msg(data['model'], msg[3], page, msg[2], msg[4])
+        elif data['model'] == '2':
             self.switch_chat(1,'system')
-            tkinter.messagebox.showinfo(title='esaychat:system',message='历史记录同步完成')
 
-    def logout(self):
+    def get_logout(self):
+        data = {
+            'header': 'LOGOUT',
+            'user': self.user
+        }
+        self.send(data)
+
+    def logout(self, data):
         """退出登录"""
         self.online=0
 
-    def keep(self):
-        """在线心跳"""
-        while self.online:
-            self.send("ONLINE",'online')
-            time.sleep(60)
-
-    def send(self, header: str, payload: str, model:Literal['message','upload','download'] = 'message') -> None:
+    def send(self, data: dict, model:Literal['message','upload','download'] = 'message') -> None:
         """消息发送函数
 
         Args:
-            header: 请求头
-            payload: 请求载荷
+            data: json数据包的
             model: 请求模式,文件传输/消息传输
 
         Returns:
             None
         """
-        def send_message(head: str, message: str, mod: str) -> None:
-            date = time.mktime(time.localtime())
-            msg = f"{head}\n\n{date}\n\n{self.user}\n\n{message}".encode('utf-8')
+        def send_message() -> None:
+            msg = json.dumps(data).encode('utf-8')
             retry = 0
             ack_hash = hashlib.md5(msg).hexdigest()
             self.ackpool.append(ack_hash)
-            if mod == 'message':
+            if model == 'message':
                 while self.ack_check(ack_hash) and retry <= 5:
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
                     retry += 1
                 if retry > 5:
-                    tkinter.messagebox.showerror(title=head,message='connect timeout')
-            elif mod == 'file':
+                    tkinter.messagebox.showerror(title=data['header'], message='connect timeout')
+            elif model in ['upload','download']:
                 while self.ack_check(ack_hash):
                     self.sock.sendto(msg, self.service)
                     time.sleep(2)
         if model == 'message':
-            work = Thread(target=send_message,args=(header,payload,model))
+            work = Thread(target=send_message)
             work.start()
         elif model == 'upload':
-            task = self.upload_pool.submit(send_message,header,payload,'file')
+            task = self.upload_pool.submit(send_message)
             task.add_done_callback(self.thread_pool_callback)
         elif model == 'download':
-            task = self.download_pool.submit(send_message,header,payload,'file')
+            task = self.download_pool.submit(send_message)
             task.add_done_callback(self.thread_pool_callback)
 
 
-    def ack(self, payload: str) -> None:
+    def ack(self, data: dict) -> None:
         """ack消息处理
 
         Args:
-            payload: ack包md5值
+            data:
+                header: 'ACK',
+                md5: 数据包md5值 (str)
 
         Returns:
             None
         """
         try:
-            self.ackpool.remove(payload)
+            self.ackpool.remove(data['md5'])
         except:
             pass
 
@@ -359,49 +381,67 @@ class Client:
         """发送聊天消息
 
         Args:
-            message: 消息数据包,[收信目标]\n消息
+            message: 发送的消息
 
         Returns:
             None
         """
-        header = 'MESSAGE'
-        message = json.dumps(self.chat_page) + '\n' + message
-        self.send(header,message)
+        data = {
+            'header': 'MESSAGE',
+            'date' : time.mktime(time.localtime()),
+            'source': self.user,
+            'target': self.chat_page,
+            'message': message
+        }
+        self.send(data, model='message')
 
     def get_chat_list(self):
         """发起获得聊天列表请求"""
-        header = 'GET_CHATS'
-        self.send(header,' ')
+        data = {
+            'header': 'GET_CHATS',
+            'user': self.user
+        }
+        self.send(data)
 
     @sql_operate
-    def save_chat_list(self,payload: str):
+    def save_chat_list(self, data: dict):
         """保存聊天列表
 
         Args:
-            payload: 聊天列表数据包
+            data:
+                header: 'CHAT_LIST',
+                friends: 好友列表 (list),
+                groups: 群聊列表 (list),
 
         Returns:
             None
         """
-        friends = json.loads(payload)[0]
-        groups = json.loads(payload)[1]
-        self.Sql_obj.save_chats(1,friends)
-        self.Sql_obj.save_chats(0,groups)
-        for _ in friends:
+        self.Sql_obj.save_chats(1,data.get('friends',[]))
+        self.Sql_obj.save_chats(0,data.get('groups',[]))
+        for _ in data.get('friends',[]):
                 self.chat_list.insert(self.chat_fir_list, index='end', tags=[json.dumps([1,_])], text=_)
-        for _ in groups:
+        for _ in data.get('groups',[]):
                 self.chat_list.insert(self.chat_group_list, index='end', tags=[json.dumps([0,_])], text=_)
 
     def get_requests_list(self):
         """发起获取好友请求列表请求"""
-        self.send('GET_ADD_REQUEST','')
+        data = {
+            'header': 'GET_ADD_REQUEST',
+            'user': self.user
+        }
+        self.send(data)
 
     @sql_operate
-    def update_requests_list(self,payload: str) -> None:
+    def update_requests_list(self, data: dict) -> None:
         """更新好友请求列表
 
         Args:
-            payload: 好友请求数据包
+            data:
+                header: 'ADD_RESPONSE',
+                my_friend_requests: 本地用户发起的好友请求 (list),
+                my_group_requests: 本地用户发起的入群请求 (list),
+                friends: 本地用户收到的好友请求 (list),
+                groups: 本地用户收到的入群请求 (list)
 
         Returns:
             None
@@ -410,7 +450,7 @@ class Client:
             if isinstance(text, list):
                 return f'{text[0]} -> {text[1]}'
             return text
-        requests = json.loads(payload)
+        requests = list(data.values())[1:]
         trees = [self.my_fri_requests, self.my_group_requests, self.fri_requests, self.group_requests]
         self.Sql_obj.save_add_requests(1,requests[0])
         self.Sql_obj.save_add_requests(0,requests[1])
@@ -433,8 +473,16 @@ class Client:
         """
         if res == 1:
             if isinstance(target,str):
-                self.save_chat_list(json.dumps(([target],[])))
-        self.send('REPLY_REQUEST',json.dumps([target,res]))
+                self.save_chat_list({
+                    'friends': [target]
+                })
+        data = {
+            'header': 'REPLY_REQUEST',
+            'user': self.user,
+            'target': target,
+            'res': res
+        }
+        self.send(data)
 
     def search(self, target: str) -> None:
         """发起搜索请求
@@ -445,19 +493,28 @@ class Client:
         Returns:
             None
         """
-        self.send('SEARCH',target)
+        data = {
+            'header': 'SEARCH',
+            'user': self.user,
+            'target': target
+        }
+        self.send(data)
 
     @sql_operate
-    def search_response(self, payload: str) -> None:
+    def search_response(self, data: dict) -> None:
         """响应搜索请求，在addfriend_page页面label处显示结果
 
         Args:
-            payload: 一个字符串，表示搜索结果，类型为json.dumps([user,group])
+            data:
+                header: 'SEARCH_RESPONSE',
+                name: 搜索目标名称 (str),
+                user: 用户是否存在 (bool),
+                group: 群聊是否存在 (bool)
 
         Returns:
             None
         """
-        name, user_exist, group_exist = json.loads(payload)
+        name, user_exist, group_exist = list(data.values())[1:]
         self.res_friend.configure(text=name,fg=('green' if user_exist else 'red'))
         self.res_group.configure(text=name,fg=('green' if group_exist else 'red'))
         if not user_exist:
@@ -489,8 +546,13 @@ class Client:
             None
         """
         header = 'ADD'
-        payload = json.dumps([model,target])
-        self.send(header,payload)
+        data = {
+            'header': header,
+            'user': self.user,
+            'model': model,
+            'target': target
+        }
+        self.send(data)
         self.Sql_obj.save_add_request(model,target)
         self.request_list.insert(self.my_fri_requests if model else self.my_group_requests,'end',text=target)
 
@@ -504,10 +566,17 @@ class Client:
         Returns:
             None
         """
-        self.send('NEW_GROUP',groupname)
+        data = {
+            'header': 'NEW_GROUP',
+            'user': self.user,
+            'groupname': groupname
+        }
+        self.send(data)
         self.Sql_obj.save_chat(0,groupname)
         self.request_list.insert(self.my_fri_requests,'end',text=groupname)
-        self.save_chat_list(json.dumps([[],[groupname]]))
+        self.save_chat_list({
+            'groups': [groupname]
+        })
         tkinter.messagebox.showinfo('新建群聊','新建群聊成功')
 
     def upload(self, files: list[bytes]) -> None:
@@ -525,34 +594,44 @@ class Client:
                 b64_buf = base64.b64encode(buf)
                 file_name, extension = os.path.splitext(os.path.basename(_))
                 filename = file_name+extension
-                readable_hash = hashlib.md5(buf).hexdigest()
+                md5 = hashlib.md5(buf).hexdigest()
                 block = len(base64.b64encode(buf)) // BUF_SIZE + 1
                 sub = 0
                 while sub <= block - 1:
-                    payload = json.dumps([self.chat_page,
-                                          filename,
-                                          sub,
-                                          block,
-                                          b64_buf[sub*BUF_SIZE:(sub+1)*BUF_SIZE].decode(),
-                                          readable_hash])
-                    self.send('UPLOAD',payload,'upload')
+                    data = {
+                        'header': 'UPLOAD',
+                        'user': self.user,
+                        'target': self.chat_page,
+                        'filename': filename,
+                        'sub': sub,
+                        'block': block,
+                        'buf': b64_buf[sub*BUF_SIZE:(sub+1)*BUF_SIZE].decode(),
+                        'md5': md5
+                    }
+                    self.send(data, 'upload')
                     sub += 1
 
     def get_file_list(self):
         """获取文件列表"""
-        self.send('GET_FILES',json.dumps(self.chat_page),'message')
+        data = {
+            'header': 'GET_FILES',
+            'user': self.user,
+            'target': self.chat_page
+        }
+        self.send(data)
 
-    def file_list(self, payload: str):
+    def handle_file_list(self, data: dict):
         """处理文件列表
 
         Args:
-            payload: 文件列表数据包
+            data:
+                header: 'FILES]
+                files: 文件列表数据包 (list)
 
         Returns:
             None
         """
-        files = json.loads(payload)
-        for file in files:
+        for file in data['files']:
             self.file_table.insert('','end',values=file)
 
     def get_download(self, sub: None | int,block: None | int, filename: str, md5: str) -> None:
@@ -567,36 +646,46 @@ class Client:
         Returns:
             None
         """
-        payload = json.dumps([sub,block,filename,md5])
-        self.send('DOWNLOAD',payload,'download')
+        data = {
+            'header': 'DOWNLOAD',
+            'user': self.user,
+            'sub': sub,
+            'block': block,
+            'filename': filename,
+            'md5': md5
+        }
+        self.send(data, 'download')
 
-    def download(self, payload: str) -> None:
+    def download(self, data: dict) -> None:
         """处理文件下载数据包
 
         Args:
-            payload: 文件下载数据包
+            data:
+                header: 'DOWNLOAD'
+                sub: 块号 (int)
+                block: 块数 (int)
+                filename: 文件名 (str)
+                md5: 文件md5 (str)
+                buf: 文件数据<base64编码> (str)
 
         Returns:
             None
         """
-        sub, block, filename, md5, byte = json.loads(payload)
-        if md5 not in self.file_cache.keys():
-            self.file_cache[md5] = [None] * block
-        if sub > 0 and self.file_cache[md5][sub - 1] is None:
-            self.get_download(sub-1,block,filename,md5)
+        if data['md5'] not in self.file_cache.keys():
+            self.file_cache[data['md5']] = [None] * data['block']
+        if data['sub'] > 0 and self.file_cache[data['md5']][data['sub'] - 1] is None:
+            self.get_download(data['sub']-1, data['block'], data['filename'] ,data['md5'])
             return
-        self.file_cache[md5][sub] = base64.b64decode(byte)
-        if None not in self.file_cache[md5]:
+        self.file_cache[data['md5']][data['sub']] = base64.b64decode(data['buf'])
+        if None not in self.file_cache[data['md5']]:
             buf = bytes()
-            for _ in self.file_cache[md5]:
+            for _ in self.file_cache[data['md5']]:
                 buf += _
-            with open(filename,'wb') as file:
+            with open(data['filename'], 'wb') as file:
                 file.write(buf)
-            self.get_download(block,block,filename,md5)
-            del self.file_cache[md5]
-            tkinter.messagebox.showinfo('下载',f'{filename}下载完成')
-            return
-        self.get_download(sub+1,block,filename,md5)
+            del self.file_cache[data['md5']]
+            tkinter.messagebox.showinfo('下载',f"{data['filename']}下载完成")
+        self.get_download(data['sub']+1,data['block'],data['filename'],data['md5'])
 
     def close_threads_pool(self):
         self.download_pool.shutdown(wait=False,cancel_futures=True)

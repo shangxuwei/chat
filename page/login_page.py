@@ -48,3 +48,7 @@ class LoginGui(tk.Tk):
     @staticmethod
     def time_out():
         tkinter.messagebox.showerror(message='Error, connect timeout, try again.')
+
+    @staticmethod
+    def user_logged_in():
+        tkinter.messagebox.showerror(message='The user is logged in.')

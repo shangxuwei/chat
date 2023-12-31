@@ -208,12 +208,12 @@ class SQL_Operate:
         self.conn.commit()
         return 1
 
-    def save_msg(self,date: float,user: str,model: int,target: str,msg: str) -> None:
+    def save_msg(self,date: str,source: str,model: int,target: str,msg: str) -> None:
         """保存接受到的消息
 
         Args:
             date: 消息日期时间戳
-            user: 发信用户
+            source: 发信用户
             model: 是否为群聊标识，1为私聊,0为群聊
             target: 收信目标
             msg: 消息内容
@@ -221,15 +221,13 @@ class SQL_Operate:
         Returns:
             None
         """
-        t = time.localtime(float(date))
-        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         if model:
             sql = ('INSERT INTO private_chat_history (target_user, source_user, time, content)'
                           ' VALUES (%s, %s, %s, %s)')
         else:
             sql = ('INSERT INTO group_chat_history (target_group, source_user, time, content)'
                           ' VALUES (%s, %s, %s, %s)')
-        self.cur.execute(sql,(target, user, date, msg,))
+        self.cur.execute(sql,(target, source, date, msg,))
         self.conn.commit()
 
     def get_msg(self,model: int,target: str) -> list:
@@ -377,14 +375,14 @@ class SQL_Operate:
             self.cur.execute(sql,(target,user))
         self.conn.commit()
 
-    def search(self,target: str) -> tuple[str, bool, bool]:
+    def search(self,target: str) -> tuple[bool, bool]:
         """搜索用户/群聊
         
         Args:
             target: 目标字符串，群聊名称及用户名称
 
         Returns:
-            返回一个元组包含两个元素，依次为匹配的用户名称，群聊名称，若找到则对应名称值为True未找到为False
+            返回一个元组包含两个元素，依次为匹配的用户名称，群聊名称，若找到则对应名称值为 True未找到为 False
         """
         sql = 'SELECT username FROM userinfo WHERE username=%s LIMIT 1'
         self.cur.execute(sql,(target,))
@@ -394,7 +392,7 @@ class SQL_Operate:
         self.cur.execute(sql,(target,))
         res = self.cur.fetchall()
         group = True if len(res)==1 else False
-        return target,user,group
+        return user,group
 
     def new_group(self,manager: str, groupname: str) -> None:
         """新建群聊
@@ -427,8 +425,6 @@ class SQL_Operate:
         Returns:
             None
         """
-        t = time.localtime(float(date))
-        date = f'{t.tm_year}-{t.tm_mon}-{t.tm_mday} {t.tm_hour}:{t.tm_min}:{t.tm_sec}'
         model, target_name = target
         if model:
             sql = 'SELECT COUNT(file_md5) FROM file_public WHERE (file_md5=%s AND downloadable_user=%s) LIMIT 1'

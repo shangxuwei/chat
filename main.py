@@ -10,7 +10,6 @@ import atexit
 @atexit.register
 def clean():
     if tools.user is not None:
-        tools.sock.sendto(f'LOGOUT\n\n\n\n{tools.user}\n\n'.encode('utf-8'),tools.service)
         time.sleep(0.5)
         try:
             os.remove(f'{tools.user}.db')
@@ -35,6 +34,9 @@ def run_login():
             run_chat()
         elif flag == 2:
             page_login.time_out()
+        elif flag == 3:
+            print('run')
+            page_login.user_logged_in()
     def sign_up():
         # page_login.wm_attributes('-disable',1)
         run_register()
@@ -91,6 +93,12 @@ def run_chat():
         return 'break'
     page_chat.input_Text.bind("<Shift-Return>", enter)
 
+    def send_msg():
+        msg = page_chat.get_text_msg()
+        if msg != '':
+            tools.chat(msg)
+    page_chat.btn_send.configure(command=send_msg)
+
     def drag(files):
         files = page_chat.input_Text.tk.splitlist(files.data)
         res = page_chat.upload_file(files)
@@ -107,17 +115,16 @@ def run_chat():
             page_chat.chat_page.set(target)
             page_chat.clear()
             tools.switch_chat(model,target)
+            if model == 1 and target == 'system':
+                page_chat.input_Text.configure(state='disabled')
+            else:
+                page_chat.input_Text.configure(state='normal')
         except IndexError:
             pass
         except ValueError:
             pass
-    page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
-    def send_msg():
-        msg = page_chat.get_text_msg()
-        if msg != '':
-            tools.chat(msg)
-    page_chat.btn_send.configure(command=send_msg)
+    page_chat.chat_list.bind("<Double-Button-1>", mouse_clicked)
 
     def add_friend():
         run_add_page()
@@ -201,5 +208,6 @@ if __name__ == "__main__":
         tools = client.Client()
         run_login()
         tools.close_threads_pool()
+        tools.get_logout()
     except KeyboardInterrupt:
         clean()
