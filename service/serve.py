@@ -60,8 +60,11 @@ class Service:
     def logged_in(func):
         """操作鉴权装饰器"""
         def check(self, data: dict):
-            if self.cookies[data['cookie'][0]] == data['cookie'][1]:
-                return func(self, data)
+            try:
+                if self.cookies[data['cookie'][0]] == data['cookie'][1]:
+                    return func(self, data)
+            except KeyError:
+                pass
         return check
 
     def listen(self):
@@ -74,6 +77,7 @@ class Service:
                 data = json.loads(data)
                 if data['header'] not in ['LOGIN',"REGISTER"]:
                     self.ack(hash_pack,address)
+                    logging.debug(data,address)
                     if hash_pack in self.ack_life:
                         continue
                     kill = threading.Thread(target=self.kill_ack_message,args=(hash_pack,))

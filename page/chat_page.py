@@ -81,8 +81,12 @@ class ChatGui(tkinterdnd2.Tk):
     def get_text_msg(self):
         # chat_model标识了群聊和私聊以及对应目标
         msg = self.input_Text.get('1.0','end')[:-1]
-        self.input_Text.delete('1.0','end')
-        return msg
+        if len(msg) < 200:
+            self.input_Text.delete('1.0','end')
+            return msg
+        else:
+            tkinter.messagebox.showerror('输入文本过长')
+            return ''
 
     @staticmethod
     def time_out():
