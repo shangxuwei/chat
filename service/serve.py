@@ -39,6 +39,7 @@ class Service:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', 10088))
         self.ip_pool = {}
+        self.cookies = {}
         self.SQL_obj = SQLTools.SQL_Operate()
         self.ack_life = []
         self.up_file_cache = dict()
@@ -58,9 +59,9 @@ class Service:
     @staticmethod
     def logged_in(func):
         """操作鉴权装饰器"""
-        def check(self,*args):
-            # if args[0] in self.ip_pool:
-            return func(self,*args)
+        def check(self, data: dict):
+            if self.cookies[data['cookie'][0]] == data['cookie'][1]:
+                return func(self, data)
         return check
 
     def listen(self):
@@ -148,14 +149,17 @@ class Service:
         Returns:
             None
         """
+        reply_data = {}
         if data['user'] in self.ip_pool.keys():
-            flag = 3
+            reply_data['res'] = 3
         else:
-            flag = self.SQL_obj.login_check(data['user'],data['pwd'])
-            if flag == 1:
+            reply_data['res'] = self.SQL_obj.login_check(data['user'],data['pwd'])
+            if reply_data['res'] == 1:
                 self.ip_pool[data['user']] = data['address']
-        self.sock.sendto(str(flag).encode("utf-8"),data['address'])
-        logging.info(f"address:{data['address']} user:{data['user']} res:{flag}")
+                reply_data['cookie'] = str(time.time())
+                self.cookies[data['user']] = reply_data['cookie']
+        self.sock.sendto(json.dumps(reply_data).encode("utf-8"), data['address'])
+        logging.info(f"address:{data['address']} user:{data['user']} res:{reply_data['res']}")
 
     @thread_lock
     def register(self, data: dict) -> None:
@@ -216,6 +220,10 @@ class Service:
         try:
             self.sock.sendto(json.dumps(reply_data).encode('utf-8'), self.ip_pool[data['user']])
             del self.ip_pool[data['user']]
+        except KeyError:
+            pass
+        try:
+            del self.cookies[data['user']]
         except KeyError:
             pass
 

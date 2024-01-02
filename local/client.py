@@ -53,6 +53,7 @@ class Client:
         self.upload_pool = ThreadPoolExecutor(max_workers=40)
         self.download_pool = ThreadPoolExecutor(max_workers=40)
         self.online = 0
+        self.cookie = None
 
         self.messagebox: tk.Text = None # 聊天消息框
 
@@ -150,10 +151,11 @@ class Client:
             self.sock.settimeout(1)
             data, address = self.sock.recvfrom(8192)
             self.sock.settimeout(None)
-            data = data.decode("utf-8")
-            if int(data) == 1:
+            data = json.loads(data)
+            if data['res'] == 1:
                 self.online = 1
                 self.user = user
+                self.cookie = data['cookie']
                 listen = Thread(target=self.listen)
                 task = Thread(target=self.get_work_queue)
                 listen.daemon = True
@@ -161,7 +163,7 @@ class Client:
                 listen.start()
                 task.start()
                 self.Sql_obj = SqliteTools.SqlTools(self.user, model='init')
-            return int(data)
+            return data['res']
         except:
             return 2
 
@@ -201,6 +203,7 @@ class Client:
             data, address = self.sock.recvfrom(9216)
             data = json.loads(data)
             method = {
+                ''
                 'MESSAGE': self.message,
                 'DOWNLOAD': self.download,
                 'LOGOUT':self.logout,
@@ -329,6 +332,7 @@ class Client:
             None
         """
         def send_message() -> None:
+            data['cookie'] = [self.user, self.cookie]
             msg = json.dumps(data).encode('utf-8')
             retry = 0
             ack_hash = hashlib.md5(msg).hexdigest()
