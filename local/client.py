@@ -203,7 +203,6 @@ class Client:
             data, address = self.sock.recvfrom(9216)
             data = json.loads(data)
             method = {
-                ''
                 'MESSAGE': self.message,
                 'DOWNLOAD': self.download,
                 'LOGOUT':self.logout,
